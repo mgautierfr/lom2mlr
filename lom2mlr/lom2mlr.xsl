@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<xsl:stylesheet version="1.0" 
+<xsl:stylesheet version="1.0"
 	xmlns:xsl="http://www.w3.org/1999/XSL/Transform"
 	xmlns:lom="http://ltsc.ieee.org/xsd/LOM"
 	xmlns:regexp="http://exslt.org/regular-expressions"
@@ -10,6 +10,7 @@
 	xmlns:vcardconv="http://ntic.org/vcard"
 	xmlns:vcard="urn:ietf:params:xml:ns:vcard-4.0"
 	xmlns:cos="http://www.inria.fr/acacia/corese#"
+    xmlns:oa="http://www.w3.org/ns/oa#"
 	xmlns:gtnq="http://www.gtn-quebec.org/ns/"
 	xmlns:mlrext="http://standards.iso.org/iso-iec/19788/ext/"
 	xmlns:mlr1="http://standards.iso.org/iso-iec/19788/-1/ed-1/en/"
@@ -50,7 +51,7 @@
 	<!-- Use a org (or fn) as a basis for an organization's uuid -->
 	<xsl:param name="org_uuid_from_org_or_fn" select="false()"/>
 
-	<!-- If a natural person has a work email, 
+	<!-- If a natural person has a work email,
 	assume it is the organization's email and not the person's email at work. -->
 	<xsl:param name="suborg_use_work_email" select="false()"/>
 
@@ -69,9 +70,11 @@
 	<!-- A URI for the conversion machinery.  -->
 	<xsl:param name="converter_id" select="'http://www.gtn-quebec/ns/lom2mlr/version/'"/>
 
+	<!-- Use a mutable MLR record -->
+	<xsl:param name="mutable_record" select="false()"/>
+
 	<!-- A URI for the LOM itself if none is specifified in metaMetadata.  -->
 	<xsl:param name="lom_uri" select="''"/>
-
 
 	<!-- the version number of the converter -->
 	<xsl:param name="converter_version" select="'0.1'"/>
@@ -191,24 +194,27 @@
 				<xsl:with-param name="resource_id" select="$identity"/>
 			</xsl:apply-templates>
 		</mlr1:RC0002>
+		<xsl:apply-templates mode="annotations">
+			<xsl:with-param name="resource" select="$identity"/>
+		</xsl:apply-templates>
 	</xsl:template>
 
 	<xsl:template match="text()" />
 	<xsl:template match="text()" mode="top"/>
 	<xsl:template match="text()" mode="general"/>
 	<xsl:template match="text()" mode="lifeCycle"/>
-	<xsl:template match="text()" mode="lifeCycle_ed"/>
 	<xsl:template match="text()" mode="metaMetadata"/>
 	<xsl:template match="text()" mode="technical"/>
 	<xsl:template match="text()" mode="tech-requirement"/>
 	<xsl:template match="text()" mode="educational"/>
 	<xsl:template match="text()" mode="educational_learning_activity"/>
 	<xsl:template match="text()" mode="educational_audience"/>
-	<xsl:template match="text()" mode="educational_annotation"/>
 	<xsl:template match="text()" mode="rights"/>
 	<xsl:template match="text()" mode="relation"/>
 	<xsl:template match="text()" mode="annotation"/>
+	<xsl:template match="text()" mode="annotations"/>
 	<xsl:template match="text()" mode="classification"/>
+	<xsl:template match="text()" mode="classification_discipline"/>
 	<xsl:template match="text()" mode="vcard"/>
 	<xsl:template match="text()" mode="vcard_org"/>
 	<xsl:template match="text()" mode="vcard_suborg_attributes"/>
@@ -232,45 +238,65 @@
 
 	<xsl:template match="lom:lifeCycle" mode="top">
 		<xsl:apply-templates mode="lifeCycle"/>
-		<xsl:apply-templates mode="lifeCycle_ed"/>
 	</xsl:template>
 
 	<xsl:template match="lom:metaMetadata" mode="metaMetadata">
 		<xsl:param name="lom_identifier"/>
 		<xsl:param name="record_id"/>
 		<xsl:param name="resource_id"/>
-		<mlr8:DES0300>
-			<mlr8:RC0001>
-				<xsl:attribute name="rdf:about">
-					<xsl:value-of select="$record_id"/>
-				</xsl:attribute>
+		<xsl:choose>
+			<xsl:when test="$mutable_record">
+				<mlr8:DES0600>
+					<mlr8:RC0002>
+						<xsl:attribute name="rdf:about">
+							<xsl:value-of select="$record_id"/>
+						</xsl:attribute>
+						<mlr8:DES0700>
+							<xsl:value-of select="$record_id"/>
+						</mlr8:DES0700>
+						<xsl:if test="$lom_identifier">
+							<!-- should I create a uuid1? -->
+							<mlr8:DES0300>
+								<xsl:value-of select="$lom_identifier"/>
+							</mlr8:DES0300>
+						</xsl:if>
+						<mlr8:DES1000>
+							<mlr8:RC0004>
+								<mlr8:DES1500>IEEE 1484.12.1-2002 LOM</mlr8:DES1500>
+							</mlr8:RC0004>
+						</mlr8:DES1000>
+						<xsl:if test="$mark_unique_uuid and $lom_identifier = ''">
+							<gtnq:irreproducible rdf:datatype="http://www.w3.org/2001/XMLSchema#boolean">true</gtnq:irreproducible>
+						</xsl:if>
+						<xsl:apply-templates mode="metaMetadata"/>
+					</mlr8:RC0002>
+				</mlr8:DES0600>
+			</xsl:when>
+			<xsl:otherwise>
 				<mlr8:DES0100>
-					<xsl:value-of select="$record_id"/>
+					<mlr8:RC0001>
+						<xsl:attribute name="rdf:about">
+							<xsl:value-of select="$record_id"/>
+						</xsl:attribute>
+						<xsl:if test="$lom_identifier">
+							<!-- should I create a uuid1? -->
+							<mlr8:DES0300>
+								<xsl:value-of select="$lom_identifier"/>
+							</mlr8:DES0300>
+						</xsl:if>
+						<mlr8:DES1000>
+							<mlr8:RC0004>
+								<mlr8:DES1500>IEEE 1484.12.1-2002 LOM</mlr8:DES1500>
+							</mlr8:RC0004>
+						</mlr8:DES1000>
+						<xsl:if test="$mark_unique_uuid and $lom_identifier = ''">
+							<gtnq:irreproducible rdf:datatype="http://www.w3.org/2001/XMLSchema#boolean">true</gtnq:irreproducible>
+						</xsl:if>
+						<xsl:apply-templates mode="metaMetadata"/>
+					</mlr8:RC0001>
 				</mlr8:DES0100>
-				<mlr8:DES0200>
-					<xsl:attribute name="rdf:resource">
-						<xsl:value-of select="$resource_id"/>
-					</xsl:attribute>
-				</mlr8:DES0200>
-				<xsl:if test="$lom_identifier">
-					<!-- should I create a uuid1? -->
-					<mlr8:DES1400>
-						<xsl:value-of select="$lom_identifier"/>
-					</mlr8:DES1400>
-				</xsl:if>
-				<mlr8:DES1500 rdf:resource="http://ltsc.ieee.org/xsd/LOM" />
-				<mlr8:DES1600>
-					<xsl:attribute name="rdf:resource">
-						<xsl:value-of select="$converter_id_v"/>
-					</xsl:attribute>
-				</mlr8:DES1600>
-				<xsl:if test="$mark_unique_uuid and $lom_identifier = ''">
-					<gtnq:irreproducible rdf:datatype="http://www.w3.org/2001/XMLSchema#boolean">true</gtnq:irreproducible>
-				</xsl:if>
-				<mlr8:DES0500>T002</mlr8:DES0500>
-				<xsl:apply-templates mode="metaMetadata"/>
-			</mlr8:RC0001>
-		</mlr8:DES0300>
+			</xsl:otherwise>
+		</xsl:choose>
 	</xsl:template>
 
 	<xsl:template match="lom:technical" mode="top">
@@ -319,6 +345,9 @@
 		<xsl:apply-templates select="lom:string" mode="langstring">
 			<xsl:with-param name="nodename">mlr2:DES0400</xsl:with-param>
 		</xsl:apply-templates>
+		<xsl:apply-templates select="lom:string[mlrext:is_absolute_iri(text())]" mode="urlstring">
+			<xsl:with-param name="nodename">mlr2:DES1800</xsl:with-param>
+		</xsl:apply-templates>
 		<xsl:if test="$use_mlr3">
 			<xsl:apply-templates select="lom:string" mode="langstring">
 				<xsl:with-param name="nodename">mlr3:DES0200</xsl:with-param>
@@ -341,9 +370,6 @@
 	<!-- lifeCycle -->
 
 	<xsl:template match="lom:contribute[lom:role[lom:source/text()='LOMv1.0' and lom:value/text()='author']]" mode="lifeCycle">
-		<mlr2:DES0200> <!-- creator -->
-			<xsl:value-of select="vcardconv:convert(lom:entity/text())/vcard:fn/vcard:text/text()" />
-		</mlr2:DES0200>
 		<xsl:choose>
 			<xsl:when test="lom:date/lom:dateTime">
 				<mlr2:DES0700>
@@ -369,55 +395,46 @@
 				</xsl:apply-templates>
 			</xsl:when>
 		</xsl:choose>
+		<xsl:apply-templates mode="lifeCycle">
+			<xsl:with-param name="dc_entity_role" select="'mlr2:DES0200'" />
+			<xsl:with-param name="mlr9_entity_role" select="'mlr2:DES1600'" />
+		</xsl:apply-templates>
+	</xsl:template>
+
+	<xsl:template match="lom:entity" mode="lifeCycle">
+		<xsl:param name="dc_entity_role"/>
+		<xsl:param name="mlr9_entity_role"/>
+		<xsl:variable name="vcard" select="vcardconv:convert(text())"/>
+		<xsl:element name="{$dc_entity_role}">
+			<xsl:value-of select="$vcard/vcard:fn/vcard:text/text()"/>
+		</xsl:element>
+		<xsl:element name="{$mlr9_entity_role}">
+			<xsl:apply-templates mode="vcard" select="$vcard"/>
+		</xsl:element>
 	</xsl:template>
 
 	<xsl:template match="lom:contribute[lom:role[lom:source/text()='LOMv1.0' and lom:value/text()='publisher']]" mode="lifeCycle">
-		<mlr2:DES0500> <!-- publisher -->
-			<xsl:value-of select="vcardconv:convert(lom:entity/text())/vcard:fn/vcard:text/text()" />
-		</mlr2:DES0500>
+		<!-- publisher -->
+		<xsl:apply-templates mode="lifeCycle">
+			<xsl:with-param name="dc_entity_role" select="'mlr2:DES0500'" />
+			<xsl:with-param name="mlr9_entity_role" select="'mlr2:DES1900'" />
+		</xsl:apply-templates>
 	</xsl:template>
 
 
 	<xsl:template match="lom:contribute" mode="lifeCycle">
-		<mlr2:DES0600> <!-- contributor -->
-			<xsl:value-of select="vcardconv:convert(lom:entity/text())/vcard:fn/vcard:text/text()" />
-		</mlr2:DES0600>
-	</xsl:template>
-
-	<xsl:template match="lom:contribute" mode="lifeCycle_ed">
-		<mlr5:DES1700>
-			<mlr5:RC0003>
-				<xsl:attribute name="rdf:about">
-					<xsl:text>urn:uuid:</xsl:text>
-					<xsl:value-of select="mlrext:uuid_unique()"/>
-				</xsl:attribute>
-				<xsl:apply-templates mode="lifeCycle_ed"/>
-			</mlr5:RC0003>
-		</mlr5:DES1700>
-	</xsl:template>
-
-	<xsl:template match="lom:role" mode="lifeCycle_ed">
-		<xsl:call-template name="mlr5_DES0800"/>
-	</xsl:template>
-
-	<xsl:template match="lom:date" mode="lifeCycle_ed">
-		<xsl:call-template name="date">
-			<xsl:with-param name="nodename" select="'mlr5:DES0700'"/>
-		</xsl:call-template>
-	</xsl:template>
-
-	<xsl:template match="lom:entity" mode="lifeCycle_ed">
-		<mlr5:DES1800>
-			<!-- <xsl:copy-of select="vcardconv:convert(text())" /> -->
-			<xsl:apply-templates mode="vcard" select="vcardconv:convert(text())" />
-		</mlr5:DES1800>
+		<!-- contributor -->
+		<xsl:apply-templates mode="lifeCycle">
+			<xsl:with-param name="dc_entity_role" select="'mlr2:DES0600'" />
+			<xsl:with-param name="mlr9_entity_role" select="'mlr2:DES2000'" />
+		</xsl:apply-templates>
 	</xsl:template>
 
 	<!-- vcard handling -->
 
 	<xsl:template match="vcard:vcard" mode="vcard">
 		<xsl:choose>
-			<xsl:when test="vcard:n">
+			<xsl:when test="vcard:n and count(vcard:n/vcard:*) &gt; 0">
 				<mlr9:RC0001>
 					<!-- Whether we will define a organization for that person -->
 					<xsl:variable name="has_suborg_groupless" select="vcard:org[not(@group)] or vcard:url[not(@group) and vcard:parameters/vcard:type/vcard:text/text() = 'WORK'] or vcard:adr[not(@group) and vcard:parameters/vcard:type/vcard:text/text() = 'WORK'] or (($suborg_use_work_email) and vcard:email[not(@group) and vcard:parameters/vcard:type/vcard:text/text() = 'WORK'])"/>
@@ -451,6 +468,8 @@
 							<xsl:with-param name="vcard" select="."/>
 						</xsl:apply-templates>
 					</xsl:if>
+					<xsl:apply-templates mode="vcard_person" />
+					<xsl:apply-templates mode="address" select="vcard:adr[vcard:parameters/vcard:type/vcard:text/text() = 'HOME']"/>
 				</mlr9:RC0001>
 			</xsl:when>
 			<xsl:when test="vcard:org or (vcard:*[vcard:parameters/vcard:type/vcard:text/text() = 'WORK'] and not(vcard:*[vcard:parameters/vcard:type/vcard:text/text() = 'HOME']))">
@@ -467,25 +486,26 @@
 						</mlr9:DES0100>
 					</xsl:if>
 					<xsl:apply-templates mode="vcard_org" />
-					<xsl:if test="vcard:geo or vcard:adr">
-						<mlr9:DES1300>
+					<xsl:apply-templates mode="address" select="vcard:adr[vcard:parameters/vcard:type/vcard:text/text() = 'WORK']"/>
+					<xsl:if test="vcard:geo">
+						<mlr9:DES1100>
 							<mlr9:RC0003>
 								<xsl:attribute name="rdf:about">
 									<xsl:text>urn:uuid:</xsl:text>
 									<xsl:value-of select="mlrext:uuid_unique()"/>
 								</xsl:attribute>
-								<xsl:apply-templates mode="address" select="vcard:adr"/>
 								<xsl:if test="vcard:geo">
-									<mlr9:DES1500 rdf:datatype="http://www.w3.org/2001/XMLSchema#float">
+									<mlr9:DES1300 rdf:datatype="http://www.w3.org/2001/XMLSchema#float">
 										<xsl:value-of select="substring-before(vcard:geo[1]/vcard:uri/text(),';')"/>
-									</mlr9:DES1500>
-									<mlr9:DES1400 rdf:datatype="http://www.w3.org/2001/XMLSchema#float">
+									</mlr9:DES1300>
+									<mlr9:DES1200 rdf:datatype="http://www.w3.org/2001/XMLSchema#float">
 										<xsl:value-of select="substring-after(vcard:geo[1]/vcard:uri/text(),';')"/>
-									</mlr9:DES1400>
+									</mlr9:DES1200>
 								</xsl:if>
 							</mlr9:RC0003>
-						</mlr9:DES1300>
+						</mlr9:DES1100>
 					</xsl:if>
+					<xsl:apply-templates mode="vcard_person" />
 				</mlr9:RC0002>
 			</xsl:when>
 			<xsl:otherwise>
@@ -500,6 +520,7 @@
 						</mlr9:DES0100>
 					</xsl:if>
 					<xsl:apply-templates mode="vcard_person" />
+					<xsl:apply-templates mode="address" select="vcard:adr[vcard:parameters/vcard:type/vcard:text/text()]"/>
 				</mlr1:RC0003>
 			</xsl:otherwise>
 		</xsl:choose>
@@ -644,46 +665,79 @@
 		<mlr9:DES0200>
 			<xsl:value-of select="vcard:text/text()"/>
 		</mlr9:DES0200>
-	</xsl:template>
-
-	<xsl:template match="vcard:fn" mode="vcard_np">
-		<mlr9:DES0800>
+		<mlr9:DES0500>
 			<xsl:value-of select="vcard:text/text()"/>
-		</mlr9:DES0800>
+		</mlr9:DES0500>
 	</xsl:template>
 
 	<xsl:template match="vcard:x-skype" mode="vcard_np">
-		<mlr9:DES0600>
-			<xsl:value-of select="vcard:unknown/text()"/>
-		</mlr9:DES0600>
+		<mlr9:DES1400>
+			<mlr9:RC0006>
+				<mlr9:DES1700>Skype</mlr9:DES1700>
+				<mlr9:DES1800><xsl:value-of select="vcard:unknown/text()"/></mlr9:DES1800>
+			</mlr9:RC0006>
+		</mlr9:DES1400>
 	</xsl:template>
 
 	<xsl:template match="vcard:x-skype-username" mode="vcard_np">
-		<mlr9:DES0600>
-			<xsl:value-of select="vcard:unknown/text()"/>
-		</mlr9:DES0600>
+		<mlr9:DES1400>
+			<mlr9:RC0006>
+				<mlr9:DES1700>Skype</mlr9:DES1700>
+				<mlr9:DES1800><xsl:value-of select="vcard:unknown/text()"/></mlr9:DES1800>
+			</mlr9:RC0006>
+		</mlr9:DES1400>
+	</xsl:template>
+
+	<xsl:template match="vcard:x-socialprofile" mode="vcard_np">
+		<mlr9:DES1400>
+			<mlr9:RC0006>
+				<mlr9:DES1700><xsl:value-of select="vcard:parameters/vcard:type/vcard:text/text()"/></mlr9:DES1700>
+				<mlr9:DES1800><xsl:value-of select="vcard:unknown/text()"/></mlr9:DES1800>
+			</mlr9:RC0006>
+		</mlr9:DES1400>
 	</xsl:template>
 
 	<xsl:template match="vcard:email" mode="vcard_np">
 		<!-- TODO: Edge case with a work email but no other org info should also be in. -->
 		<xsl:if test="not(vcard:parameters/vcard:type/vcard:text/text() = 'WORK')">
-			<mlr9:DES0900>
+			<mlr9:DES0800>
 				<xsl:value-of select="vcard:text/text()"/>
-			</mlr9:DES0900>
+			</mlr9:DES0800>
 		</xsl:if>
 	</xsl:template>
 
-	<xsl:template match="vcard:tel[vcard:parameters/vcard:type/vcard:text/text() = 'WORK' and vcard:parameters/vcard:type/vcard:text/text() = 'VOICE']" mode="vcard_np">
-		<mlr9:DES1000>
-			<xsl:value-of select="vcard:text/text()"/>
-		</mlr9:DES1000>
+	<xsl:template match="vcard:tel" mode="vcard_np">
+		<mlr9:DES1400>
+			<mlr9:RC0007>
+				<xsl:if test="vcard:parameters/vcard:type/vcard:text/text() = 'HOME'">
+					<mlr9:DES1900>T010</mlr9:DES1900>
+				</xsl:if>
+				<xsl:if test="vcard:parameters/vcard:type/vcard:text/text() = 'WORK'">
+					<mlr9:DES1900>T020</mlr9:DES1900>
+				</xsl:if>
+				<xsl:if test="vcard:parameters/vcard:type/vcard:text/text() = 'CELL'">
+					<mlr9:DES1900>T040</mlr9:DES1900>
+				</xsl:if>
+				<xsl:if test="vcard:parameters/vcard:type/vcard:text/text() = 'FAX'">
+					<mlr9:DES1900>T050</mlr9:DES1900>
+				</xsl:if>
+				<xsl:if test="vcard:parameters/vcard:type/vcard:text/text() = 'VOICE'">
+					<mlr9:DES1900>T060</mlr9:DES1900>
+				</xsl:if>
+				<!-- heuristics for fixed? If there is a home/work mobile other than self... -->
+				<mlr9:DES2000>
+					<xsl:value-of select="vcard:text/text()"/></mlr9:DES2000>
+			</mlr9:RC0007>
+		</mlr9:DES1400>
 	</xsl:template>
 
 	<xsl:template match="vcard:n" mode="vcard_np">
-		<mlr9:DES0500>
-			<xsl:apply-templates mode="convert_n_to_fn" select="."/>
-		</mlr9:DES0500>
-		<mlr9:DES0700>
+		<xsl:if test="not(../vcard:fn)">
+			<mlr9:DES0500>
+				<xsl:apply-templates mode="convert_n_to_fn" select="."/>
+			</mlr9:DES0500>
+		</xsl:if>
+		<mlr9:DES0600>
 			<xsl:value-of select="vcard:surname/text()"/>
 			<xsl:text>;</xsl:text>
 			<xsl:value-of select="vcard:given/text()"/>
@@ -693,7 +747,7 @@
 			<xsl:value-of select="vcard:prefix/text()"/>
 			<xsl:text>;</xsl:text>
 			<xsl:value-of select="vcard:suffix/text()"/>
-		</mlr9:DES0700>
+		</mlr9:DES0600>
 		<mlr9:DES0300>
 			<xsl:value-of select="vcard:surname/text()"/>
 		</mlr9:DES0300>
@@ -744,7 +798,7 @@
 
 	<xsl:template match="vcard:vcard"  mode="vcard_suborg">
 		<xsl:param name="group"/>
-		<mlr9:DES1100>
+		<mlr9:DES0900>
 			<mlr9:RC0002>
 				<xsl:attribute name="rdf:about">
 					<xsl:call-template name="suborg_identity_url">
@@ -764,20 +818,20 @@
 				<xsl:apply-templates mode="vcard_suborg_attributes">
 					<xsl:with-param name="group" select="$group"/>
 				</xsl:apply-templates>
+				<xsl:apply-templates mode="address" select="vcard:adr[string(@group) = $group and vcard:parameters/vcard:type/vcard:text/text() = 'WORK']"/>
 				<xsl:if test="vcard:adr[string(@group) = $group and vcard:parameters/vcard:type/vcard:text/text() = 'WORK']">
-					<mlr9:DES1300>
+					<mlr9:DES1100>
 						<mlr9:RC0003>
 							<xsl:attribute name="rdf:about">
 								<xsl:text>urn:uuid:</xsl:text>
 								<xsl:value-of select="mlrext:uuid_unique()"/>
 							</xsl:attribute>
-							<xsl:apply-templates mode="address" select="vcard:adr[string(@group) = $group and vcard:parameters/vcard:type/vcard:text/text() = 'WORK']"/>
 							<!-- skip geo which might be home address -->
 						</mlr9:RC0003>
-					</mlr9:DES1300>
+					</mlr9:DES1100>
 				</xsl:if>
 			</mlr9:RC0002>
-		</mlr9:DES1100>
+		</mlr9:DES0900>
 	</xsl:template>
 
 	<xsl:template name="suborg_identity_url">
@@ -887,9 +941,9 @@
 	<xsl:template match="vcard:email[vcard:parameters/vcard:type/vcard:text/text() = 'WORK']" mode="vcard_suborg_attributes">
 		<xsl:param name="group"/>
 		<xsl:if test="string(@group) = $group">
-			<mlr9:DES0900>
+			<mlr9:DES0800>
 				<xsl:value-of select="vcard:text/text()"/>
-			</mlr9:DES0900>
+			</mlr9:DES0800>
 		</xsl:if>
 	</xsl:template>
 
@@ -897,12 +951,11 @@
 	<xsl:template match="vcard:org" mode="vcard_suborg_attributes">
 		<xsl:param name="group"/>
 		<xsl:if test="string(@group) = $group">
-			<mlr9:DES1200>
+			<mlr9:DES1000>
 				<xsl:value-of select="vcard:text/text()"/>
-			</mlr9:DES1200>
+			</mlr9:DES1000>
 		</xsl:if>
 	</xsl:template>
-
 
 	<!-- VCard : Organizations -->
 
@@ -1068,13 +1121,13 @@
 
 
 	<xsl:template match="vcard:email" mode="vcard_org">
-		<mlr9:DES0900>
+		<mlr9:DES0800>
 			<xsl:value-of select="vcard:text/text()"/>
-		</mlr9:DES0900>
+		</mlr9:DES0800>
 	</xsl:template>
 
 	<xsl:template match="vcard:adr" mode="address">
-		<mlr9:DES1700>
+		<mlr9:DES0700>
 			<xsl:if test="vcard:box or vcard:extended">
 				<xsl:value-of select="vcard:box/text()"/>
 				<xsl:text> </xsl:text>
@@ -1093,31 +1146,20 @@
 			<xsl:text>
 </xsl:text>
 			<xsl:value-of select="vcard:country/text()"/>
-		</mlr9:DES1700>
+		</mlr9:DES0700>
 	</xsl:template>
 
 	<xsl:template match="vcard:org" mode="vcard_org">
-		<mlr9:DES1200>
-			<xsl:value-of select="vcard:text/text()"/>
-		</mlr9:DES1200>
-	</xsl:template>
-
-
-
-
-	<!--
-	Not allowed by the specifications of range.
-	<xsl:template match="vcard:tel[vcard:parameters/vcard:type/vcard:text/text() = 'VOICE']" mode="vcard_org">
 		<mlr9:DES1000>
 			<xsl:value-of select="vcard:text/text()"/>
 		</mlr9:DES1000>
 	</xsl:template>
-	-->
 
 	<!-- metametadata -->
 
 	<xsl:template match="*" mode="identifier">
 		<xsl:param name="technical"/>
+		<xsl:param name="construct" select="true()"/>
 		<xsl:choose>
 			<xsl:when test="lom:identifier/lom:catalog[text() = 'URI']">
 				<xsl:value-of select="lom:identifier[lom:catalog/text() = 'URI'][1]/lom:entry/text()" />
@@ -1144,7 +1186,7 @@
 			<xsl:when test="$technical and ../lom:technical/lom:location/text()">
 				<xsl:value-of select="../lom:technical/lom:location[1]/text()" />
 			</xsl:when>
-			<xsl:when test="lom:identifier">
+			<xsl:when test="$construct and lom:identifier">
 				<xsl:value-of select="lom:identifier[1]/lom:catalog/text()" />
 				<xsl:text>|</xsl:text>
 				<xsl:value-of select="lom:identifier[1]/lom:entry/text()" />
@@ -1155,45 +1197,68 @@
 
 	<xsl:template match="lom:metadataSchema" mode="metaMetadata">
 		<!-- note that a URI would be preferrable... Should we identify the frequent ones? -->
-		<mlr8:DES0600>
+		<mlr8:DES0400>
 			<xsl:value-of select="text()"/>
-		</mlr8:DES0600>
+		</mlr8:DES0400>
 	</xsl:template>
 
 	<xsl:template match="lom:contribute" mode="metaMetadata">
-		<mlr8:DES0700>
-			<mlr8:RC0002>
+		<mlr8:DES1100>
+			<mlr8:RC0003>
 				<xsl:attribute name="rdf:about">
 					<xsl:text>urn:uuid:</xsl:text>
 					<xsl:value-of select="mlrext:uuid_unique()"/>
 				</xsl:attribute>
 				<xsl:apply-templates mode="metaMetadata"/>
-			</mlr8:RC0002>
-		</mlr8:DES0700>
+			</mlr8:RC0003>
+		</mlr8:DES1100>
 	</xsl:template>
 
-	<xsl:template match="lom:role" mode="metaMetadata">
-		<xsl:call-template name="mlr8_DES1200"/>
-	</xsl:template>
 
-	<xsl:template match="lom:language" mode="metaMetadata">
-		<mlr8:DES0400>
-			<xsl:call-template name="language">
-				<xsl:with-param name="l" select="text()"/>
-			</xsl:call-template>
-		</mlr8:DES0400>
+	<xsl:template match="lom:entity" mode="metaMetadata">
+		<mlr8:DES1400>
+			<xsl:apply-templates mode="vcard" select="vcardconv:convert(text())" />
+		</mlr8:DES1400>
 	</xsl:template>
 
 	<xsl:template match="lom:date" mode="metaMetadata">
-		<xsl:call-template name="date">
-			<xsl:with-param name="nodename" select="'mlr8:DES1300'"/>
-		</xsl:call-template>
+		<xsl:choose>
+			<!-- first cases: valid 8601 date or datetime -->
+			<xsl:when test="lom:dateTime and regexp:test(lom:dateTime/text(), '^([\+-]?\d{4}(?!\d{2}\b))((-?)((0[1-9]|1[0-2])(\3([12]\d|0[1-9]|3[01]))?|W([0-4]\d|5[0-2])(-?[1-7])?|(00[1-9]|0[1-9]\d|[12]\d{2}|3([0-5]\d|6[1-6]))))$')">
+				<mlr8:DES1300 rdf:datatype="http://www.w3.org/2001/XMLSchema#date">
+					<xsl:value-of select="lom:dateTime/text()" />
+				</mlr8:DES1300>
+			</xsl:when>
+			<xsl:when test="lom:dateTime and regexp:test(lom:dateTime/text(), '^([\+-]?\d{4}(?!\d{2}\b))((-?)((0[1-9]|1[0-2])(\3([12]\d|0[1-9]|3[01]))?|W([0-4]\d|5[0-2])(-?[1-7])?|(00[1-9]|0[1-9]\d|[12]\d{2}|3([0-5]\d|6[1-6])))([T\s]((([01]\d|2[0-3])((:?)[0-5]\d)?|24\:?00)([\.,]\d+(?!:))?)?(\17[0-5]\d([\.,]\d+)?)?([zZ]|([\+-])([01]\d|2[0-3]):?([0-5]\d)?)?)?)?$')">
+				<mlr8:DES1300 rdf:datatype="http://www.w3.org/2001/XMLSchema#dateTime">
+					<xsl:value-of select="lom:dateTime/text()" />
+				</mlr8:DES1300>
+			</xsl:when>
+			<xsl:when test="lom:dateTime">
+				<mlr8:DES1300>
+					<xsl:value-of select="lom:dateTime/text()" />
+				</mlr8:DES1300>
+			</xsl:when>
+			<xsl:otherwise>
+				<xsl:apply-templates select="lom:description/lom:string" mode="langstring">
+					<xsl:with-param name="nodename" select="'mlr8:DES1300'"/>
+				</xsl:apply-templates>
+			</xsl:otherwise>
+		</xsl:choose>
 	</xsl:template>
 
-	<xsl:template match="lom:entity" mode="metaMetadata">
-		<mlr8:DES1000>
-			<xsl:apply-templates mode="vcard" select="vcardconv:convert(text())" />
-		</mlr8:DES1000>
+	<xsl:template match="lom:role" mode="metaMetadata">
+		<mlr8:DES1200>
+			<xsl:value-of select="lom:value/text()" />
+		</mlr8:DES1200>
+	</xsl:template>
+
+	<xsl:template match="lom:language" mode="metaMetadata">
+		<mlr8:DES0200>
+			<xsl:call-template name="language">
+				<xsl:with-param name="l" select="text()"/>
+			</xsl:call-template>
+		</mlr8:DES0200>
 	</xsl:template>
 
 	<!-- technical -->
@@ -1202,18 +1267,6 @@
 		<mlr2:DES0900>
 			<xsl:value-of select="text()"/>
 		</mlr2:DES0900>
-		<xsl:choose>
-			<xsl:when test="$use_mlr3 and text()='non-digital'">
-				<mlr3:DES0300>
-					<xsl:value-of select="text()"/>
-				</mlr3:DES0300>
-			</xsl:when>
-			<xsl:when test="$use_mlr3 and regexp:test(text(),'^\w+\/\w+$')">
-				<mlr3:DES0300>
-					<xsl:value-of select="text()"/>
-				</mlr3:DES0300>
-			</xsl:when>
-		</xsl:choose>
 	</xsl:template>
 
 	<xsl:template match="lom:size" mode="technical">
@@ -1542,20 +1595,6 @@
 				</mlr5:RC0002>
 			</mlr5:DES1500>
 		</xsl:if>
-		<xsl:variable name="annotation">
-			<xsl:apply-templates mode="educational_annotation"/>
-		</xsl:variable>
-		<xsl:if test="string-length($annotation)&gt;0">
-			<mlr5:DES1300>
-				<mlr5:RC0001>
-					<xsl:attribute name="rdf:about">
-						<xsl:text>urn:uuid:</xsl:text>
-						<xsl:value-of select="mlrext:uuid_unique()"/>
-					</xsl:attribute>
-					<xsl:copy-of select="$annotation"/>
-				</mlr5:RC0001>
-			</mlr5:DES1300>
-		</xsl:if>
 		<xsl:apply-templates mode="educational"/>
 	</xsl:template>
 
@@ -1564,22 +1603,27 @@
           <xsl:value-of select="lom:value/text()"/>
         </mlr2:DES0800>
 		<xsl:if test="$use_mlr3">
-			<xsl:call-template name="mlr3_DES0700"/>
+			<xsl:call-template name="mlr2_DES0800"/>
 		</xsl:if>
 	</xsl:template>
 
-	<xsl:template match="lom:description" mode="educational">
-		<mlr5:DES1300>
-			<mlr5:RC0001>
-				<xsl:attribute name="rdf:about">
-					<xsl:text>urn:uuid:</xsl:text>
-					<xsl:value-of select="mlrext:uuid_unique()"/>
+	<xsl:template match="lom:description" mode="annotations">
+		<xsl:param name="resource"/>
+		<oa:Annotation>
+			<xsl:attribute name="rdf:about">
+				<xsl:text>urn:uuid:</xsl:text>
+				<xsl:value-of select="mlrext:uuid_unique()"/>
+			</xsl:attribute>
+			<oa:hasTarget>
+				<xsl:attribute name="rdf:resource">
+					<xsl:value-of select="$resource"/>
 				</xsl:attribute>
-				<xsl:apply-templates select="lom:string" mode="langstring">
-					<xsl:with-param name="nodename" select="'mlr5:DES0200'"/>
-				</xsl:apply-templates>
-			</mlr5:RC0001>
-		</mlr5:DES1300>
+			</oa:hasTarget>
+			<!-- add something about oa:motivation being educational -->
+			<xsl:apply-templates select="lom:string" mode="langstring">
+				<xsl:with-param name="nodename" select="'oa:hasBody'"/>
+			</xsl:apply-templates>
+		</oa:Annotation>
 	</xsl:template>
 
 	<xsl:template match="lom:learningResourceType" mode="educational_learning_activity">
@@ -1642,9 +1686,7 @@
 	<xsl:template match="lom:rights" mode="top">
 		<xsl:choose>
 			<xsl:when test="lom:description">
-				<xsl:apply-templates select="lom:description/lom:string" mode="langstring">
-					<xsl:with-param name="nodename" select="'mlr2:DES1500'"/>
-				</xsl:apply-templates>
+				<xsl:apply-templates select="lom:description/lom:string" mode="rights" />
 			</xsl:when>
 			<xsl:when test="lom:cost[lom:source/text()='LOMv1.0' and lom:value/text()='yes']">
 				<xsl:choose>
@@ -1679,6 +1721,22 @@
 		</xsl:choose>
 	</xsl:template>
 
+	<xsl:template mode="rights" match="lom:string[mlrext:is_absolute_iri(text())]">
+		<mlr2:DES2300>
+			<mlr2:RC0002>
+				<xsl:attribute name="rdf:about">
+					<xsl:value-of select="text()"/>
+				</xsl:attribute>
+			</mlr2:RC0002>
+		</mlr2:DES2300>
+	</xsl:template>
+
+	<xsl:template mode="rights" match="lom:string[not(mlrext:is_absolute_iri(text()))]">
+		<xsl:apply-templates select="." mode="langstring">
+			<xsl:with-param name="nodename" select="'mlr2:DES1500'"/>
+		</xsl:apply-templates>
+	</xsl:template>
+
 	<!-- relations -->
 
 	<xsl:template match="lom:relation" mode="top">
@@ -1687,68 +1745,88 @@
 				<xsl:with-param name="technical" select="false()"/>
 			</xsl:apply-templates>
 		</xsl:variable>
-		<xsl:variable name="resource_id_uri">
-			<xsl:choose>
-				<xsl:when test="substring-before($resource_id,'|')!=''">
-					<xsl:text>urn:uuid:</xsl:text>
-					<xsl:value-of select="mlrext:uuid_string($resource_id)"/>
-				</xsl:when>
-				<xsl:otherwise>
-					<xsl:value-of select="$resource_id"/>
-				</xsl:otherwise>
-			</xsl:choose>
+		<xsl:variable name="resource_id_if_uri">
+			<xsl:apply-templates mode="identifier" select="lom:resource">
+				<xsl:with-param name="technical" select="false()"/>
+				<xsl:with-param name="construct" select="false()"/>
+			</xsl:apply-templates>
 		</xsl:variable>
-		<xsl:if test="string-length($resource_id_uri) &gt; 0">
-			<xsl:choose>
-				<xsl:when test="lom:kind[lom:source/text()='LOMv1.0' and lom:value/text()='isbasedon']">
-					<mlr2:DES1100>
-						<xsl:value-of select="$resource_id_uri"/>
-					</mlr2:DES1100>
-					<xsl:if test="$use_mlr3">
-						<mlr3:DES0600>
-							<xsl:value-of select="$resource_id_uri"/>
-						</mlr3:DES0600>
-					</xsl:if>
-				</xsl:when>
-				<xsl:otherwise>
-					<mlr2:DES1300>
-						<xsl:value-of select="$resource_id_uri"/>
-					</mlr2:DES1300>
-				</xsl:otherwise>
-			</xsl:choose>
-		</xsl:if>
+		<xsl:choose>
+			<xsl:when test="string-length($resource_id_if_uri) = 0">
+				<xsl:choose>
+					<xsl:when test="lom:kind[lom:source/text()='LOMv1.0' and lom:value/text()='isbasedon']">
+						<mlr2:DES1100>
+							<xsl:value-of select="$resource_id"/>
+						</mlr2:DES1100>
+						<xsl:if test="$use_mlr3">
+							<mlr3:DES0600>
+								<xsl:value-of select="$resource_id"/>
+							</mlr3:DES0600>
+						</xsl:if>
+					</xsl:when>
+					<xsl:otherwise>
+						<mlr2:DES1300>
+							<xsl:value-of select="$resource_id"/>
+						</mlr2:DES1300>
+					</xsl:otherwise>
+				</xsl:choose>
+			</xsl:when>
+			<xsl:otherwise>
+				<xsl:choose>
+					<xsl:when test="lom:kind[lom:source/text()='LOMv1.0' and lom:value/text()='isbasedon']">
+						<mlr2:DES2100>
+							<xsl:attribute name="rdf:resource">
+								<xsl:value-of select="$resource_id_if_uri"/>
+							</xsl:attribute>
+						</mlr2:DES2100>
+					</xsl:when>
+					<xsl:otherwise>
+						<mlr2:DES2200>
+							<xsl:attribute name="rdf:resource">
+								<xsl:value-of select="$resource_id_if_uri"/>
+							</xsl:attribute>
+						</mlr2:DES2200>
+					</xsl:otherwise>
+				</xsl:choose>
+			</xsl:otherwise>
+		</xsl:choose>
 	</xsl:template>
 
 
 	<!-- annotation -->
 
-	<xsl:template match="lom:annotation" mode="top">
-		<mlr5:DES1300>
-			<mlr5:RC0001>
-				<xsl:attribute name="rdf:about">
-					<xsl:text>urn:uuid:</xsl:text>
-					<xsl:value-of select="mlrext:uuid_unique()"/>
+	<xsl:template match="lom:annotation" mode="annotations">
+		<xsl:param name="resource"/>
+		<oa:Annotation>
+			<xsl:attribute name="rdf:about">
+				<xsl:text>urn:uuid:</xsl:text>
+				<xsl:value-of select="mlrext:uuid_unique()"/>
+			</xsl:attribute>
+			<oa:hasTarget>
+				<xsl:attribute name="rdf:resource">
+					<xsl:value-of select="$resource"/>
 				</xsl:attribute>
-				<xsl:apply-templates mode="annotation"/>
-			</mlr5:RC0001>
-		</mlr5:DES1300>
+			</oa:hasTarget>
+			<!-- add something about oa:motivation from annotation type -->
+			<xsl:apply-templates mode="annotation"/>
+		</oa:Annotation>
 	</xsl:template>
 
 	<xsl:template match="lom:entity" mode="annotation">
-        <mlr5:DES1400>
-            <xsl:apply-templates mode="vcard" select="vcardconv:convert(lom:vcard/text())" />
-        </mlr5:DES1400>
+        <oa:annotatedBy>
+            <xsl:apply-templates mode="vcard" select="vcardconv:convert(text())" />
+        </oa:annotatedBy>
 	</xsl:template>
 
 	<xsl:template match="lom:description" mode="annotation">
 		<xsl:apply-templates select="lom:string" mode="langstring">
-        	<xsl:with-param name="nodename" select="'mlr5:DES0200'"/>
+        	<xsl:with-param name="nodename" select="'oa:hasBody'"/>
 		</xsl:apply-templates>
 	</xsl:template>
 
 	<xsl:template match="lom:date" mode="annotation">
 		<xsl:call-template name="date">
-			<xsl:with-param name="nodename" select="'mlr5:DES0100'"/>
+			<xsl:with-param name="nodename" select="'oa:annotatedAt'"/>
 		</xsl:call-template>
 	</xsl:template>
 
@@ -1768,6 +1846,7 @@
 		<xsl:if test="string-length($target)">
 			<xsl:copy-of select="$target"/>
 		</xsl:if>
+		<xsl:apply-templates mode="classification_discipline"/>
 	</xsl:template>
 
 	<xsl:template match="lom:classification[lom:purpose[lom:source/text()='LOMv1.0' and lom:value/text()='educational level']]" mode="classification">
@@ -1810,6 +1889,25 @@
 		</xsl:choose>
 	</xsl:template>
 
+	<xsl:template mode="classification_discipline" match="lom:taxonPath">
+		<xsl:choose>
+			<xsl:when test="lom:source/lom:string[mlrext:is_absolute_iri(text())]">
+				<mlr2:DES1700>
+					<xsl:attribute name="rdf:resource">
+						<xsl:value-of select="concat(lom:source/lom:string[mlrext:is_absolute_iri(text())][position()=1]/text(), lom:taxon[last()]/lom:id/text())" />
+					</xsl:attribute>
+				</mlr2:DES1700>
+			</xsl:when>
+			<xsl:when test="mlrext:is_absolute_iri(lom:taxon[last()]/lom:id/text())">
+				<mlr2:DES1700>
+					<xsl:attribute name="rdf:resource">
+						<xsl:value-of select="lom:taxon[last()]/lom:id/text()" />
+					</xsl:attribute>
+				</mlr2:DES1700>
+			</xsl:when>
+		</xsl:choose>
+	</xsl:template>
+
 	<!-- utility functions -->
 
 	<xsl:template match="lom:string" mode="langstring">
@@ -1823,6 +1921,15 @@
 				</xsl:attribute>
 			</xsl:if>
 			<xsl:value-of select="text()" />
+		</xsl:element>
+	</xsl:template>
+
+	<xsl:template match="lom:string" mode="urlstring">
+		<xsl:param name="nodename" />
+		<xsl:element name="{$nodename}">
+			<xsl:attribute name="rdf:resource">
+				<xsl:value-of select="text()" />
+			</xsl:attribute>
 		</xsl:element>
 	</xsl:template>
 

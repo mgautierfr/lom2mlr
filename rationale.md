@@ -1,18 +1,5 @@
 # Converting LOM to MLR
 
-<!-- 
-TODO: Ouvrir compte GTN-Québec GitHub.
-TODO: Lots: Avec ou sans MLR record. (Toggle)
-MLR9: Suggestions
-    Contribution should be a partial MLR record
-    Repository should be a resource with entry point URIs (and repository type?)
-    DES1100... pourquoi séquence? Préférences? (Maudit RDF!)
-Identifier les heuristiques vs normatif comme telles. (couleur?)
-Toggle: Ajouter des informations hors-scope, comme l'addresse de vcard.owl
-trouver comment éliminer le marqueur linguistique dans le MLR traduit.
-FOAF: Make sure non-work group! sigh.
--->
-
 # General principles
 
 ## Optional heuristics
@@ -234,7 +221,7 @@ But does not become
 
 #### general/description
 
-Description could be interpreted as `mlr2:DES0400`, but in practice there is never any reason not to use `mlr3:DES0200` instead.
+Description can be interpreted as `mlr2:DES0400`, but if we use the MLR3 profile, we'll also want to use `mlr3:DES0200`.
 
     :::xml
     <general>
@@ -246,8 +233,24 @@ Description could be interpreted as `mlr2:DES0400`, but in practice there is nev
 Becomes
 
     :::N3
-    [] mlr3:DES0200 "L'enseignant identifie les contraintes..."@fra-CA ;
-       mlr2:DES0400 "L'enseignant identifie les contraintes..."@fra-CA .
+    [] mlr2:DES0400 "L'enseignant identifie les contraintes..."@fra-CA ;
+        mlr3:DES0200 "L'enseignant identifie les contraintes..."@fra-CA .
+
+But if it's an URI, it can also be interpreted as `mlr2:DES1800`.
+
+    :::xml
+    <general>
+        <description>
+            <string language="zxx">http://www.example.com/myblog/2014/01/01</string>
+        </description>
+    </general>
+
+Becomes
+
+    :::N3
+    [] mlr2:DES1800 <http://www.example.com/myblog/2014/01/01> .
+
+(Note: Should we specify that this URL is a `mlr2:RC0001` (Thing)?)
 
 #### general/keyword ####
 
@@ -285,7 +288,7 @@ Becomes
 
 ### Elements that are not covered
 
-`general/structure` and `general/aggregationLevel` have no MLR equivalent (except composites, treated in `mlr3:DES0700`).
+`general/structure` and `general/aggregationLevel` have no MLR equivalent (except composites, treated in `mlr2:DES0800`).
 
 ## Life cycle
 
@@ -293,31 +296,11 @@ Becomes
 
 Learning resource version and state have no equivalent in MLR.
 
-### Contributions
-
-All LOM contributions become `mlr5:RC0003` contribution entities through a `mlr5:DES1700` relationships. 
-
-    :::xml
-    <lifeCycle>
-        <contribute>
-            <role>
-                <source>LOMv1.0</source>
-                <value>publisher</value>
-            </role>
-        </contribute>
-    </lifeCycle>
-
-Becomes
-
-    :::N3
-    []  a mlr1:RC0002;
-        mlr5:DES1700 [ a mlr5:RC0003 ] .
-
 ### Roles
 
 #### Authors
 
-A contribution whose role is `LOMv1.0:author` is interpreted as a `dc:creator` (`mlr2:DES0200`). We would then use the `FN` of the `VCARD`.
+A contribution whose role is `LOMv1.0:author` is interpreted as a `dc:creator` (`mlr2:DES0200` and `mlr2:DES1600`). We would then use the `FN` of the `VCARD` for `mlr2:DES0200` and an entity for `mlr2:DES1600`. Various contributors may be interpreted as entities of the Person type (`mlr1:RC0003`), or the subtypes Natural person (`mlr9:RC0001`) or Organisation (`mlr9:RC0002`).
 
     :::xml
     <lifeCycle>
@@ -347,11 +330,14 @@ A contribution whose role is `LOMv1.0:author` is interpreted as a `dc:creator` (
 Becomes
 
     :::N3
-    [] mlr2:DES0200 "Frédéric Bergeron".
+    [] mlr2:DES0200 "Frédéric Bergeron";
+       mlr2:DES1600 [
+            a mlr9:RC0001
+       ].
 
 #### Éditeurs
 
-Similarly, a contribution whose role is `LOMv1.0:publisher` is interpreted as a `dc:publisher` (`mlr2:DES0500`).
+Similarly, a contribution whose role is `LOMv1.0:publisher` is interpreted as a `dc:publisher` (`mlr2:DES0500` and `mlr2:DES1900`).
 
     :::xml
     <lifeCycle>
@@ -362,7 +348,8 @@ Similarly, a contribution whose role is `LOMv1.0:publisher` is interpreted as a 
             </role>
             <entity>BEGIN:VCARD
     VERSION:3.0
-    FN:Frédéric Bergeron
+    ORG:GTN-Québec
+    FN:GTN-Québec
     END:VCARD
     </entity>
         </contribute>
@@ -371,11 +358,14 @@ Similarly, a contribution whose role is `LOMv1.0:publisher` is interpreted as a 
 Becomes
 
     :::N3
-    [] mlr2:DES0500 "Frédéric Bergeron".
+    [] mlr2:DES0500 "GTN-Québec";
+        mlr2:DES1900 [
+            a mlr9:RC0002
+       ].
 
 #### Collaborateurs
 
-Finally, all other roles are interpreted as `dc:contributor` (`mlr2:DES0600`).
+Finally, all other roles are interpreted as `dc:contributor` (`mlr2:DES0600` and `mlr2:DES2000`).
 
     :::xml
     <lifeCycle>
@@ -387,6 +377,7 @@ Finally, all other roles are interpreted as `dc:contributor` (`mlr2:DES0600`).
             <entity>BEGIN:VCARD
     VERSION:3.0
     FN:Frédéric Bergeron
+    N:Bergeron;Frédéric;;;
     END:VCARD
     </entity>
         </contribute>
@@ -395,59 +386,10 @@ Finally, all other roles are interpreted as `dc:contributor` (`mlr2:DES0600`).
 Becomes
 
     :::N3
-    [] mlr2:DES0600 "Frédéric Bergeron".
-
-#### `ISO_IEC_19788-5:2012::VA.1:`
-
-Besides those DC elements, each LOM lifecycle element can be expressed as a contribution in MLR5 terms. Note that there is some ambiguity in the document about the nature of pedagogical contributions. The definition of Contribution is given as:
-
-> Set of resources that are instrumental in making up a learning resource.
-
-This may suggest that the contribution consists of a further learning resource, either a component or an adjuntct of the main learning resource; but the Contribution does not have a link to another learning resource. Its only characteristics are the contribution date, and to a person in one of two roles: author or validator. For this reason, we interpret the Contribution in the same way as LOM lifecycle contributions.
-
-Most [LOM v.10 lifeCycle roles](http://www.lom-fr.fr/vdex/lomfrv1-0/lom/vdex_lc_roles.xml) can be mapped to authors, except validators which are named as such in LOM. 
-
-    :::xml
-    <lifeCycle>
-        <contribute>
-            <role>
-                <source>LOMv1.0</source>
-                <value>technical validator</value>
-            </role>
-        </contribute>
-    </lifeCycle>
-
-Becomes
-
-    :::N3
-    []  a mlr1:RC0002; 
-        mlr5:DES1700 [ a mlr5:RC0003;
-            mlr5:DES0800 "T020" ] .
-
-##### Exceptions
-
-The difficult cases are `publisher` and `unknown`, which are not translated as vocabulary entities, but as literals. Note that this is invalid MLR, as the literal MUST be taken from the vocabulary. We use an asterisk to denote the absence from the vocabulary.
-
-Another approach would be to use a different RDF property (through a MLR extension or otherwise) to keep the more precise LOM information.
-
-    :::xml
-    <lifeCycle>
-        <contribute>
-            <role>
-                <source>LOMv1.0</source>
-                <value>unknown</value>
-            </role>
-        </contribute>
-    </lifeCycle>
-
-Becomes
-
-    :::N3
-    []  a mlr1:RC0002; 
-        mlr5:DES1700 [ a mlr5:RC0003;
-            mlr5:DES0800 "*unknown" ] .
-
-
+    [] mlr2:DES0600 "Frédéric Bergeron";
+        mlr2:DES2000 [
+            a mlr9:RC0001
+        ].
 
 ### Person subtypes
 
@@ -481,8 +423,7 @@ Becomes
 
     :::N3
     []  a mlr1:RC0002; 
-        mlr5:DES1700 [ a mlr5:RC0003;
-            mlr5:DES1800 [ a mlr9:RC0001 ] ] .
+        mlr2:DES1600 [ a mlr9:RC0001 ] .
 
 #### Identifying organizations
 
@@ -508,8 +449,7 @@ Becomes
 
     :::N3
     []  a mlr1:RC0002; 
-        mlr5:DES1700 [ a mlr5:RC0003;
-            mlr5:DES1800 [ a mlr9:RC0002 ] ] .
+        mlr2:DES1600 [ a mlr9:RC0002 ] .
 
 #### `WORK` and `HOME` subtypes
 
@@ -535,8 +475,7 @@ Becomes
 
     :::N3
     []  a mlr1:RC0002; 
-        mlr5:DES1700 [ a mlr5:RC0003;
-            mlr5:DES1800 [ a mlr9:RC0002 ] ] .
+        mlr2:DES1600 [ a mlr9:RC0002 ] .
 
 #### Absence of `N` or `ORG` in a `VCARD`
 
@@ -560,9 +499,8 @@ Absent either those attributes, we fall back on the generic person entity.
 Becomes
 
     :::N3
-    []  a mlr1:RC0002; 
-        mlr5:DES1700 [ a mlr5:RC0003;
-            mlr5:DES1800 [ a mlr1:RC0003 ] ] .
+    []  a mlr1:RC0002;
+        mlr2:DES1600 [ a mlr1:RC0003 ] .
 
 
 
@@ -586,7 +524,7 @@ So to review, here is the information that triggers an organization entity:
 
 ##### `ORG`
 
-The `ORG` is carried over in the entity's data as `mlr9:DES1200`.
+The `ORG` is carried over in the entity's data as `mlr9:DES1000`.
 
     :::xml
     <lifeCycle>
@@ -609,10 +547,9 @@ Becomes
 
     :::N3
     []  a mlr1:RC0002; 
-        mlr5:DES1700 [ a mlr5:RC0003;
-            mlr5:DES1800 [ a mlr9:RC0001 ;
-                mlr9:DES1100 [ a mlr9:RC0002;
-                               mlr9:DES1200 "GTN-Québec" ] ] ] .
+        mlr2:DES1600 [ a mlr9:RC0001 ;
+            mlr9:DES0900 [ a mlr9:RC0002;
+                           mlr9:DES1000 "GTN-Québec" ] ] .
 
 ##### `ADR` of subtype `WORK`
 
@@ -633,7 +570,7 @@ We format the address according to the following schema:
     city, region, code
     country 
 
- and use it as a `mlr9:DES1700` address for a `mlr9:RC0003` (Geographical location.)
+ and use it as a `mlr9:DES0700` address for a `mlr9:RC0002` (Organization.)
 
     :::xml
     <lifeCycle>
@@ -656,13 +593,11 @@ Becomes
 
     :::N3
     []  a mlr1:RC0002; 
-        mlr5:DES1700 [ a mlr5:RC0003;
-            mlr5:DES1800 [ a mlr9:RC0001 ;
-                mlr9:DES1100 [ a mlr9:RC0002;
-                    mlr9:DES1300 [ a mlr9:RC0003;
-                        mlr9:DES1700 """455, rue du Parvis
+        mlr2:DES1600 [ a mlr9:RC0001 ;
+            mlr9:DES0900 [ a mlr9:RC0002;
+                mlr9:DES0700 """455, rue du Parvis
     Québec, Québec, G1K 9H6
-    Canada""" ] ] ] ].
+    Canada""" ] ].
 
 ##### Work URL
 
@@ -689,9 +624,8 @@ Becomes
 
     :::N3
     []  a mlr1:RC0002; 
-        mlr5:DES1700 [ a mlr5:RC0003;
-            mlr5:DES1800 [ a mlr9:RC0001 ;
-                mlr9:DES1100 <http://www.gtn-quebec.org/> ] ] .
+        mlr2:DES1600 [ a mlr9:RC0001 ;
+            mlr9:DES0900 <http://www.gtn-quebec.org/> ] .
     <http://www.gtn-quebec.org/> a mlr9:RC0002;
         mlr9:DES0100 "http://www.gtn-quebec.org/".
 
@@ -737,8 +671,7 @@ Becomes
 
     :::N3
     []  a mlr1:RC0002; 
-        mlr5:DES1700 [ a mlr5:RC0003;
-            mlr5:DES1800 <http://maparent.ca/foaf.rdf> ] .
+        mlr2:DES1600 <http://maparent.ca/foaf.rdf>.
     <http://maparent.ca/foaf.rdf> a mlr9:RC0001;
         mlr9:DES0100 "http://maparent.ca/foaf.rdf" .
 
@@ -746,8 +679,7 @@ In preference to
 
     :::N3 forbidden
     []  a mlr1:RC0002; 
-        mlr5:DES1700 [ a mlr5:RC0003;
-            mlr5:DES1800 <http://maparent.ca/> ] .
+        mlr2:DES1600 <http://maparent.ca/> .
     <http://maparent.ca/> a mlr9:RC0001 .
 
 ##### Preferred URL
@@ -776,8 +708,7 @@ Becomes
 
     :::N3
     []  a mlr1:RC0002; 
-        mlr5:DES1700 [ a mlr5:RC0003;
-            mlr5:DES1800 <http://maparent.ca/resume.fr.html> ] .
+        mlr2:DES1600 <http://maparent.ca/resume.fr.html>.
     <http://maparent.ca/resume.fr.html> a mlr9:RC0001;
         mlr9:DES0100 "http://maparent.ca/resume.fr.html".
 
@@ -785,8 +716,7 @@ In preference to
 
     :::N3 forbidden
     []  a mlr1:RC0002; 
-        mlr5:DES1700 [ a mlr5:RC0003;
-            mlr5:DES1800 <http://maparent.ca/> ] .
+        mlr2:DES1600 <http://maparent.ca/>.
     <http://maparent.ca/> a mlr9:RC0001 .
 
 ##### Any URL (non-work)
@@ -815,8 +745,7 @@ Becomes
 
     :::N3
     []  a mlr1:RC0002; 
-        mlr5:DES1700 [ a mlr5:RC0003;
-            mlr5:DES1800 <http://maparent.ca/> ] .
+        mlr2:DES1600 <http://maparent.ca/>.
     <http://maparent.ca/> a mlr9:RC0001 ;
         mlr9:DES0100 "http://maparent.ca/" .
 
@@ -825,8 +754,7 @@ In preference to
 
     :::N3 forbidden
     []  a mlr1:RC0002; 
-        mlr5:DES1700 [ a mlr5:RC0003;
-            mlr5:DES1800 <http://maparent.ca/resume.fr.html> ] .
+        mlr2:DES1600 <http://maparent.ca/resume.fr.html>.
     <http://maparent.ca/resume.fr.html> a mlr9:RC0001 .
 
 ##### A UUID calculated from non-work email and FN (`person_uuid_from_email_fn`, enabled)
@@ -862,8 +790,7 @@ Becomes
 
     :::N3
     []  a mlr1:RC0002; 
-        mlr5:DES1700 [ a mlr5:RC0003;
-            mlr5:DES1800 <urn:uuid:2e53e0a5-38b8-56a2-8841-f9b47cd7f0b1> ] .
+        mlr2:DES1600 <urn:uuid:2e53e0a5-38b8-56a2-8841-f9b47cd7f0b1>.
     <urn:uuid:2e53e0a5-38b8-56a2-8841-f9b47cd7f0b1> a mlr9:RC0001 ;
         mlr9:DES0100 "cn=Marc-Antoine Parent,mail=map@ntic.org" .
 
@@ -892,8 +819,7 @@ Becomes
 
     :::N3
     []  a mlr1:RC0002; 
-        mlr5:DES1700 [ a mlr5:RC0003;
-            mlr5:DES1800 <urn:uuid:2e53e0a5-38b8-56a2-8841-f9b47cd7f0b1> ] .
+        mlr2:DES1600 <urn:uuid:2e53e0a5-38b8-56a2-8841-f9b47cd7f0b1>.
     <urn:uuid:2e53e0a5-38b8-56a2-8841-f9b47cd7f0b1> a mlr9:RC0001 ;
         mlr9:DES0100 "cn=Marc-Antoine Parent,mail=map@ntic.org" .
 
@@ -932,10 +858,8 @@ Uses a UUID1, thus:
 
     :::N3
     <urn:uuid:10000000-0000-0000-0000-000000000001>  a mlr1:RC0002; 
-        mlr5:DES1700 <urn:uuid:10000000-0000-0000-0000-000000000002> .
-    <urn:uuid:10000000-0000-0000-0000-000000000002> a mlr5:RC0003;
-        mlr5:DES1800 <urn:uuid:10000000-0000-0000-0000-000000000003> .
-    <urn:uuid:10000000-0000-0000-0000-000000000003> a mlr9:RC0001 .
+        mlr2:DES1600 <urn:uuid:10000000-0000-0000-0000-000000000002> .
+    <urn:uuid:10000000-0000-0000-0000-000000000002> a mlr9:RC0001 .
 
 Note the absence of mlr9:DES0100 in that case, so we do not have:
 
@@ -946,9 +870,7 @@ But if we set `person_uuid_from_fn`, we then have:
 
     :::N3 --person_uuid_from_fn
     <urn:uuid:10000000-0000-0000-0000-000000000001>  a mlr1:RC0002; 
-        mlr5:DES1700 <urn:uuid:10000000-0000-0000-0000-000000000002> .
-    <urn:uuid:10000000-0000-0000-0000-000000000002> a mlr5:RC0003;
-        mlr5:DES1800 <urn:uuid:6a1d6673-47dd-5071-9b24-f6c7688f0b64> .
+        mlr2:DES1600 <urn:uuid:6a1d6673-47dd-5071-9b24-f6c7688f0b64> .
     <urn:uuid:6a1d6673-47dd-5071-9b24-f6c7688f0b64> a mlr9:RC0001 ;
         mlr9:DES0100 "Marc-Antoine Parent" .
 
@@ -976,18 +898,14 @@ Uses a UUID1, thus:
 
     :::N3
     <urn:uuid:10000000-0000-0000-0000-000000000001>  a mlr1:RC0002; 
-        mlr5:DES1700 <urn:uuid:10000000-0000-0000-0000-000000000002> .
-    <urn:uuid:10000000-0000-0000-0000-000000000002> a mlr5:RC0003;
-        mlr5:DES1800 <urn:uuid:10000000-0000-0000-0000-000000000003> .
-    <urn:uuid:10000000-0000-0000-0000-000000000003> a mlr9:RC0001 .
+        mlr2:DES1600 <urn:uuid:10000000-0000-0000-0000-000000000002> .
+    <urn:uuid:10000000-0000-0000-0000-000000000002> a mlr9:RC0001 .
 
 But if we set `person_uuid_from_fn`, we then have:
 
     :::N3 --person_uuid_from_fn
     <urn:uuid:10000000-0000-0000-0000-000000000001>  a mlr1:RC0002; 
-        mlr5:DES1700 <urn:uuid:10000000-0000-0000-0000-000000000002> .
-    <urn:uuid:10000000-0000-0000-0000-000000000002> a mlr5:RC0003;
-        mlr5:DES1800 <urn:uuid:6a1d6673-47dd-5071-9b24-f6c7688f0b64> .
+        mlr2:DES1600 <urn:uuid:6a1d6673-47dd-5071-9b24-f6c7688f0b64> .
     <urn:uuid:6a1d6673-47dd-5071-9b24-f6c7688f0b64> a mlr9:RC0001 ;
         mlr9:DES0100 "Marc-Antoine Parent" .
 
@@ -1015,10 +933,8 @@ Uses a UUID1, thus:
 
     :::N3
     <urn:uuid:10000000-0000-0000-0000-000000000001>  a mlr1:RC0002; 
-        mlr5:DES1700 <urn:uuid:10000000-0000-0000-0000-000000000002> .
-    <urn:uuid:10000000-0000-0000-0000-000000000002> a mlr5:RC0003;
-        mlr5:DES1800 <urn:uuid:10000000-0000-0000-0000-000000000003> .
-    <urn:uuid:10000000-0000-0000-0000-000000000003> a mlr9:RC0001 .
+        mlr2:DES1600 <urn:uuid:10000000-0000-0000-0000-000000000002> .
+    <urn:uuid:10000000-0000-0000-0000-000000000002> a mlr9:RC0001 .
 
 But not
 
@@ -1057,8 +973,7 @@ Becomes
 
     :::N3
     []  a mlr1:RC0002; 
-        mlr5:DES1700 [ a mlr5:RC0003;
-            mlr5:DES1800 <http://gtn-quebec.org/foaf.rdf> ] .
+        mlr2:DES1600 <http://gtn-quebec.org/foaf.rdf>.
     <http://gtn-quebec.org/foaf.rdf> a mlr9:RC0002;
         mlr9:DES0100 "http://gtn-quebec.org/foaf.rdf" .
 
@@ -1066,8 +981,7 @@ In preference to
 
     :::N3 forbidden
     []  a mlr1:RC0002; 
-        mlr5:DES1700 [ a mlr5:RC0003;
-            mlr5:DES1800 <http://gtn-quebec.org/> ] .
+        mlr2:DES1600 <http://gtn-quebec.org/>.
     <http://gtn-quebec.org/> a mlr9:RC0002 .
 
 
@@ -1097,8 +1011,7 @@ Becomes
 
     :::N3
     []  a mlr1:RC0002; 
-        mlr5:DES1700 [ a mlr5:RC0003;
-            mlr5:DES1800 <http://gtn-quebec.org/contact> ] .
+        mlr2:DES1600 <http://gtn-quebec.org/contact>.
     <http://gtn-quebec.org/contact> a mlr9:RC0002;
         mlr9:DES0100 "http://gtn-quebec.org/contact" .
 
@@ -1106,8 +1019,7 @@ In preference to
 
     :::N3 forbidden
     []  a mlr1:RC0002; 
-        mlr5:DES1700 [ a mlr5:RC0003;
-            mlr5:DES1800 <http://gtn-quebec.org/> ] .
+        mlr2:DES1600 <http://gtn-quebec.org/>.
     <http://gtn-quebec.org/> a mlr9:RC0002 .
 
 ##### Any URL
@@ -1136,8 +1048,7 @@ Becomes
 
     :::N3
     []  a mlr1:RC0002; 
-        mlr5:DES1700 [ a mlr5:RC0003;
-            mlr5:DES1800 <http://gtn-quebec.org/contact> ] .
+        mlr2:DES1600 <http://gtn-quebec.org/contact>.
     <http://gtn-quebec.org/contact> a mlr9:RC0002;
         mlr9:DES0100 "http://gtn-quebec.org/contact" .
 
@@ -1145,8 +1056,7 @@ In preference to
 
     :::N3 forbidden
     []  a mlr1:RC0002; 
-        mlr5:DES1700 [ a mlr5:RC0003;
-            mlr5:DES1800 <http://gtn-quebec.org/> ] .
+        mlr2:DES1600 <http://gtn-quebec.org/>.
     <http://gtn-quebec.org/> a mlr9:RC0002 .
 
 ##### A UUID calculated from an email and ORG (`org_uuid_from_email_org`, enabled)
@@ -1174,8 +1084,7 @@ The URI will be `UUID5(UUID5(NAMESPACE_URL, 'mailto:info@gtn-quebec.org'), 'Grou
 
     :::N3
     []  a mlr1:RC0002; 
-        mlr5:DES1700 [ a mlr5:RC0003;
-            mlr5:DES1800 <urn:uuid:ebe75f2a-7562-544c-adf2-43a798987650> ] .
+        mlr2:DES1600 <urn:uuid:ebe75f2a-7562-544c-adf2-43a798987650>.
     <urn:uuid:ebe75f2a-7562-544c-adf2-43a798987650> a mlr9:RC0002;
         mlr9:DES0100 "cn=Groupe de travail québécois sur les normes et standards TI pour l’apprentissage, l’éducation et la formation,mail=info@gtn-quebec.org".
 
@@ -1183,8 +1092,7 @@ In preference to `UUID5(UUID5(NAMESPACE_URL, 'mailto:info@gtn-quebec.org'), 'GTN
 
     :::N3 forbidden
     []  a mlr1:RC0002; 
-        mlr5:DES1700 [ a mlr5:RC0003;
-            mlr5:DES1800 <urn:uuid:6b7dd3ef-8633-5111-a963-39c908231a7b> ] .
+        mlr2:DES1600 <urn:uuid:6b7dd3ef-8633-5111-a963-39c908231a7b>.
     <urn:uuid:6b7dd3ef-8633-5111-a963-39c908231a7b> a mlr9:RC0002;
         mlr9:DES0100 "cn=GTN-Québec,mail=info@gtn-quebec.org".
 
@@ -1213,8 +1121,7 @@ Becomes
 
     :::N3
     []  a mlr1:RC0002; 
-        mlr5:DES1700 [ a mlr5:RC0003;
-            mlr5:DES1800 <urn:uuid:6b7dd3ef-8633-5111-a963-39c908231a7b> ] .
+        mlr2:DES1600 <urn:uuid:6b7dd3ef-8633-5111-a963-39c908231a7b>.
     <urn:uuid:6b7dd3ef-8633-5111-a963-39c908231a7b> a mlr9:RC0002;
         mlr9:DES0100 "cn=GTN-Québec,mail=info@gtn-quebec.org".
 
@@ -1242,8 +1149,7 @@ Becomes
 
     :::N3 --no-org_uuid_from_email_fn
     []  a mlr1:RC0002; 
-        mlr5:DES1700 [ a mlr5:RC0003;
-            mlr5:DES1800 <mailto:info@gtn-quebec.org> ] .
+        mlr2:DES1600 <mailto:info@gtn-quebec.org>.
     <mailto:info@gtn-quebec.org> a mlr9:RC0002;
         mlr9:DES0100 "info@gtn-quebec.org".
 
@@ -1279,8 +1185,7 @@ Becomes
 
     :::N3
     []  a mlr1:RC0002; 
-        mlr5:DES1700 [ a mlr5:RC0003;
-            mlr5:DES1800 <urn:uuid:f2fd5bf8-502e-5805-bb98-16ffd4929089> ] .
+        mlr2:DES1600 <urn:uuid:f2fd5bf8-502e-5805-bb98-16ffd4929089>.
     <urn:uuid:f2fd5bf8-502e-5805-bb98-16ffd4929089> a mlr9:RC0002;
         mlr9:DES0100 "GTN-Québec;Canada;Québec;Québec".
 
@@ -1308,8 +1213,7 @@ Becomes
 
     :::N3
     []  a mlr1:RC0002; 
-        mlr5:DES1700 [ a mlr5:RC0003;
-            mlr5:DES1800 <urn:uuid:f2fd5bf8-502e-5805-bb98-16ffd4929089> ] .
+        mlr2:DES1600 <urn:uuid:f2fd5bf8-502e-5805-bb98-16ffd4929089>.
     <urn:uuid:f2fd5bf8-502e-5805-bb98-16ffd4929089> a mlr9:RC0002;
         mlr9:DES0100 "GTN-Québec;Canada;Québec;Québec".
 
@@ -1345,8 +1249,7 @@ Becomes, with `org_uuid_from_org_or_fn`,
 
     :::N3 --org_uuid_from_org_or_fn
     []  a mlr1:RC0002; 
-        mlr5:DES1700 [ a mlr5:RC0003;
-            mlr5:DES1800 <urn:uuid:88e3aa1b-9aec-51c4-86d2-58a8080832b9> ] .
+        mlr2:DES1600 <urn:uuid:88e3aa1b-9aec-51c4-86d2-58a8080832b9>.
     <urn:uuid:88e3aa1b-9aec-51c4-86d2-58a8080832b9> a mlr9:RC0002;
         mlr9:DES0100 "GTN-Québec".
 
@@ -1374,9 +1277,8 @@ Becomes, with `org_uuid_from_org_or_fn`,
 
     :::N3 --org_uuid_from_org_or_fn
     []  a mlr1:RC0002; 
-        mlr5:DES1700 [ a mlr5:RC0003;
-            mlr5:DES1800 [ a mlr9:RC0002;
-                mlr9:DES0100 "GTN-Québec" ] ] .
+        mlr2:DES1600 [ a mlr9:RC0002;
+            mlr9:DES0100 "GTN-Québec" ] .
 
 ##### A UUID1
 
@@ -1402,8 +1304,7 @@ Becomes
 
     :::N3
     []  a mlr1:RC0002; 
-        mlr5:DES1700 [ a mlr5:RC0003;
-            mlr5:DES1800 <urn:uuid:10000000-0000-0000-0000-000000000001> ] .
+        mlr2:DES1600 <urn:uuid:10000000-0000-0000-0000-000000000001>.
     <urn:uuid:10000000-0000-0000-0000-000000000001> a mlr9:RC0002 .
 
 Note the absence of `mlr9:DES0100`.
@@ -1444,11 +1345,10 @@ Becomes
 
     :::N3
     []  a mlr1:RC0002;
-        mlr5:DES1700 [ a mlr5:RC0003;
-            mlr5:DES1800 <http://maparent.ca/> ] .
+        mlr2:DES1600 <http://maparent.ca/>.
     <http://maparent.ca/> a mlr9:RC0001;
         mlr9:DES0100 "http://maparent.ca/" ;
-        mlr9:DES1100 <http://gtn-quebec.org/> .
+        mlr9:DES0900 <http://gtn-quebec.org/> .
     <http://gtn-quebec.org/> a mlr9:RC0002;
         mlr9:DES0100 "http://gtn-quebec.org/" .
 
@@ -1488,20 +1388,18 @@ Becomes
 
     :::N3
     []  a mlr1:RC0002; 
-        mlr5:DES1700 [ a mlr5:RC0003;
-            mlr5:DES1800 [a mlr9:RC0001 ;
-                mlr9:DES0100 "http://maparent.ca/";
-                mlr9:DES1100 <urn:uuid:10000000-0000-0000-0000-000000000001> ] ] .
+        mlr2:DES1600 [a mlr9:RC0001 ;
+            mlr9:DES0100 "http://maparent.ca/";
+            mlr9:DES0900 <urn:uuid:10000000-0000-0000-0000-000000000001> ] .
     <urn:uuid:10000000-0000-0000-0000-000000000001> a mlr9:RC0002.
 
 But if `suborg_use_work_email` is set to true:
 
     :::N3 --suborg_use_work_email
     []  a mlr1:RC0002; 
-        mlr5:DES1700 [ a mlr5:RC0003;
-            mlr5:DES1800 [a mlr9:RC0001 ;
-                mlr9:DES0100 "http://maparent.ca/";
-                mlr9:DES1100 <urn:uuid:e66c8b26-2564-53ee-b271-783ec932e4d5> ] ] .
+        mlr2:DES1600 [a mlr9:RC0001 ;
+            mlr9:DES0100 "http://maparent.ca/";
+            mlr9:DES0900 <urn:uuid:e66c8b26-2564-53ee-b271-783ec932e4d5> ] .
     <urn:uuid:e66c8b26-2564-53ee-b271-783ec932e4d5> a mlr9:RC0002;
         mlr9:DES0100 "cn=GTN-Québec,mail=map@ntic.org" .
 
@@ -1534,18 +1432,17 @@ Leading to
 
     :::N3 --suborg_use_work_email
     []  a mlr1:RC0002; 
-        mlr5:DES1700 [ a mlr5:RC0003;
-            mlr5:DES1800 <http://maparent.ca/> ] .
+        mlr2:DES1600 <http://maparent.ca/>.
     <http://maparent.ca/> a mlr9:RC0001 ;
                 mlr9:DES0100 "http://maparent.ca/" ;
-                mlr9:DES1100 <http://www.gtn-quebec.org/> ,
+                mlr9:DES0900 <http://www.gtn-quebec.org/> ,
                              <http://vteducation.org/> .
     <http://www.gtn-quebec.org/> a mlr9:RC0002;
         mlr9:DES0100 "http://www.gtn-quebec.org/";
-        mlr9:DES1200 "GTN-Québec" .
+        mlr9:DES1000 "GTN-Québec" .
     <http://vteducation.org/> a mlr9:RC0002;
         mlr9:DES0100 "http://vteducation.org/";
-        mlr9:DES1200 "Vitrine Technologie-Éducation" .
+        mlr9:DES1000 "Vitrine Technologie-Éducation" .
 
 ### Generic persons
 
@@ -1557,10 +1454,10 @@ The VCard contains much useful information besides the name and identity. Howeve
 
 #### `N` and `FN`
 
-The `FN` element, when applied to a natural person, is carried over directly as `mlr9:DES0800`.
+The `FN` element, when applied to a natural person, is carried over directly as `mlr9:DES0500`.
 
 The `N` element breaks down into the following components: surname, given, additional, prefix, and suffix.
-This is used both integrally in `mlr9:DES0700`, decomposed in `mlr9:DES0300` (family name) and `mlr9:DES0400` (given name), and re-composed in `mlr9:DES0500`. In the latter case, we simply use a standard order: "prefix given additional surname suffix".
+This is used both integrally in `mlr9:DES0600`, decomposed in `mlr9:DES0300` (family name) and `mlr9:DES0400` (given name), and re-composed in `mlr9:DES0500` if the FN is not given. In the latter case, we simply use a standard order: "prefix given additional surname suffix".
 
     :::xml
     <lifeCycle>
@@ -1582,13 +1479,38 @@ Becomes
 
     :::N3
     []  a mlr1:RC0002; 
-        mlr5:DES1700 [ a mlr5:RC0003;
-            mlr5:DES1800 [ a mlr9:RC0001 ;
-                mlr9:DES0300 "Parent";
-                mlr9:DES0400 "Marc";
-                mlr9:DES0500 "M. Marc Antoine Parent M.Sc.";
-                mlr9:DES0700 "Parent;Marc;Antoine;M.;M.Sc.";
-                mlr9:DES0800 "Marc-Antoine Parent" ] ] .
+        mlr2:DES1600 [ a mlr9:RC0001 ;
+            mlr9:DES0300 "Parent";
+            mlr9:DES0400 "Marc";
+            mlr9:DES0600 "Parent;Marc;Antoine;M.;M.Sc.";
+            mlr9:DES0500 "Marc-Antoine Parent" ].
+
+While (without FN)
+
+    :::xml
+    <lifeCycle>
+        <contribute>
+            <role>
+                <source>LOMv1.0</source>
+                <value>author</value>
+            </role>
+            <entity>BEGIN:VCARD
+    VERSION:3.0
+    N:Parent;Marc;Antoine;M.;M.Sc.
+    END:VCARD
+    </entity>
+        </contribute>
+    </lifeCycle>
+
+Becomes
+
+    :::N3
+    []  a mlr1:RC0002; 
+        mlr2:DES1600 [ a mlr9:RC0001 ;
+            mlr9:DES0300 "Parent";
+            mlr9:DES0400 "Marc";
+            mlr9:DES0500 "M. Marc Antoine Parent M.Sc.";
+            mlr9:DES0600 "Parent;Marc;Antoine;M.;M.Sc." ] .
 
 #### `FN` for a generic person
 
@@ -1613,14 +1535,13 @@ Becomes
 
     :::N3
     []  a mlr1:RC0002; 
-        mlr5:DES1700 [ a mlr5:RC0003;
-            mlr5:DES1800 [ a mlr1:RC0003 ;
-                mlr9:DES0200 "Marc-Antoine Parent" ] ] .
+        mlr2:DES1600 [ a mlr1:RC0003 ;
+            mlr9:DES0200 "Marc-Antoine Parent" ] .
 
 
 #### Organization
 
-The `ORG` element is also directly expressed as `mlr9:DES1200`, always on a `mlr9:RC0002` sub-element.
+The `ORG` element is also directly expressed as `mlr9:DES1000`, always on a `mlr9:RC0002` sub-element.
 
     :::xml
     <lifeCycle>
@@ -1642,14 +1563,44 @@ Becomes
 
     :::N3
     []  a mlr1:RC0002; 
-        mlr5:DES1700 [ a mlr5:RC0003;
-            mlr5:DES1800 [ a mlr9:RC0002 ;
-                mlr9:DES1200 "GTN-Québec" ] ].
+        mlr2:DES1600 [ a mlr9:RC0002 ;
+            mlr9:DES1000 "GTN-Québec" ].
+
+
+#### Social profiles
+
+MLR-9 defines a field an entity for social networks. There is an extension of vCard in common use: `X-SOCIALPROFILE`.
+
+    :::xml
+    <lifeCycle>
+        <contribute>
+            <role>
+                <source>LOMv1.0</source>
+                <value>author</value>
+            </role>
+            <entity>BEGIN:VCARD
+    VERSION:3.0
+    FN:Marc-Antoine Parent
+    N:Parent;Marc-Antoine;;;
+    X-SOCIALPROFILE;type=Twitter:http://twitter.com/ma_parent
+    END:VCARD
+    </entity>
+        </contribute>
+    </lifeCycle>
+
+Becomes
+
+    :::N3
+    []  a mlr1:RC0002; 
+        mlr2:DES1600 [ a mlr9:RC0001 ;
+            mlr9:DES1400 [ a mlr9:RC0006; 
+                mlr9:DES1700 "Twitter" ;
+                mlr9:DES1800 "http://twitter.com/ma_parent" ] ].
 
 
 #### Skype
 
-MLR-9 defines a field for skype: `mlr9:DES0600`. There is no standard field for skype in vCard, but two extensions are in common use: `X-SKYPE` and `X-SKYPE-USERNAME`.
+There is no standard field for skype in vCard, but two extensions are in common use: `X-SKYPE` and `X-SKYPE-USERNAME`.
 
     :::xml
     <lifeCycle>
@@ -1672,9 +1623,10 @@ Becomes
 
     :::N3
     []  a mlr1:RC0002; 
-        mlr5:DES1700 [ a mlr5:RC0003;
-            mlr5:DES1800 [ a mlr9:RC0001 ;
-                mlr9:DES0600 "maparent" ] ].
+        mlr2:DES1600 [ a mlr9:RC0001 ;
+            mlr9:DES1400 [ a mlr9:RC0006; 
+                mlr9:DES1700 "Skype" ;
+                mlr9:DES1800 "maparent" ] ].
 
 ##### #####
 
@@ -1699,13 +1651,14 @@ Becomes
 
     :::N3
     []  a mlr1:RC0002; 
-        mlr5:DES1700 [ a mlr5:RC0003;
-            mlr5:DES1800 [ a mlr9:RC0001 ;
-                mlr9:DES0600 "maparent" ] ].
+        mlr2:DES1600 [ a mlr9:RC0001 ;
+            mlr9:DES1400 [ a mlr9:RC0006; 
+                mlr9:DES1700 "Skype" ;
+                mlr9:DES1800 "maparent" ] ].
 
 #### Email
 
-The `EMAIL` element is also directly expressed as `mlr9:DES0900`. 
+The `EMAIL` element is also directly expressed as `mlr9:DES0800`. 
 
     :::xml
     <lifeCycle>
@@ -1728,9 +1681,8 @@ Becomes
 
     :::N3
     []  a mlr1:RC0002; 
-        mlr5:DES1700 [ a mlr5:RC0003;
-            mlr5:DES1800 [ a mlr9:RC0001 ;
-                mlr9:DES0900 "map@ntic.org" ] ].
+        mlr2:DES1600 [ a mlr9:RC0001 ;
+                mlr9:DES0800 "map@ntic.org" ].
 
 ##### #####
 
@@ -1756,9 +1708,8 @@ Becomes
 
     :::N3
     []  a mlr1:RC0002; 
-        mlr5:DES1700 [ a mlr5:RC0003;
-            mlr5:DES1800 [ a mlr9:RC0002 ;
-                mlr9:DES0900 "map@ntic.org" ] ].
+        mlr2:DES1600 [ a mlr9:RC0002 ;
+            mlr9:DES0800 "map@ntic.org" ].
 
 
 ##### #####
@@ -1789,24 +1740,22 @@ Becomes
 
     :::N3
     []  a mlr1:RC0002; 
-        mlr5:DES1700 [ a mlr5:RC0003;
-            mlr5:DES1800 [ a mlr9:RC0001 ;
-                mlr9:DES0900 "maparent@gmail.com";
-                mlr9:DES1100 [ a mlr9:RC0002 ;
-                    mlr9:DES0900 "map@ntic.org" ] ] ].
+        mlr2:DES1600 [ a mlr9:RC0001 ;
+            mlr9:DES0800 "maparent@gmail.com";
+            mlr9:DES0900 [ a mlr9:RC0002 ;
+                mlr9:DES0800 "map@ntic.org" ] ].
 
 and not
 
     :::N3 forbidden
     []  a mlr1:RC0002; 
-        mlr5:DES1700 [ a mlr5:RC0003;
-            mlr5:DES1800 [ a mlr9:RC0001 ;
-                mlr9:DES0900 "map@ntic.org";
-                mlr9:DES0900 "maparent@gmail.com" ] ].
+        mlr2:DES1600 [ a mlr9:RC0001 ;
+            mlr9:DES0800 "map@ntic.org";
+            mlr9:DES0800 "maparent@gmail.com" ].
 
 #### `TEL`
 
-Only work phones are considered by MLR-9. They are expressed by `mlr9:DES1000` and attached to the person. Note: We feel the specifications should be altered so the range encompasses generic persons.
+Only work phones are considered by MLR-9. They are expressed by telephone account entities `mlr9:RC0007` through `mlr9:DES1400` and attached to the person.
 
     :::xml
     <lifeCycle>
@@ -1819,7 +1768,6 @@ Only work phones are considered by MLR-9. They are expressed by `mlr9:DES1000` a
     VERSION:3.0
     FN:Marc-Antoine Parent
     N:Parent;Marc-Antoine;;;
-    TEL;TYPE=VOICE,HOME:1-514-555-9999
     TEL;TYPE=VOICE,WORK:1-514-555-8888
     END:VCARD
     </entity>
@@ -1830,22 +1778,14 @@ Becomes
 
     :::N3
     []  a mlr1:RC0002; 
-        mlr5:DES1700 [ a mlr5:RC0003;
-            mlr5:DES1800 [ a mlr9:RC0001 ;
-                mlr9:DES1000 "1-514-555-8888" ] ].
-
-and not
-
-    :::N3 forbidden
-    []  a mlr1:RC0002; 
-        mlr5:DES1700 [ a mlr5:RC0003;
-            mlr5:DES1800 [ a mlr9:RC0001 ;
-                mlr9:DES1000 "1-514-555-9999" ] ].
-
+        mlr2:DES1600 [ a mlr9:RC0001 ;
+            mlr9:DES1400 [ a mlr9:RC0007 ;
+                mlr9:DES1900 "T020" ;
+                mlr9:DES2000 "1-514-555-8888" ] ] .
 
 ### Address elements
 
-A work `ADR` element in the vCard is expressed as a geographical location on the organization (`mlr9:RC0003`) through the location property (`mlr9:DES1300`). The `ADR` element is composed of the following components: box, extended, street, city, region, code, country. Those are recomposed using the following pattern:
+A work `ADR` element in the vCard is expressed as a geographical location on the organization (`mlr9:RC0003`) through the location property (`mlr9:DES1100`). The `ADR` element is composed of the following components: box, extended, street, city, region, code, country. Those are recomposed using the following pattern:
 
     :::
     box extended
@@ -1853,7 +1793,7 @@ A work `ADR` element in the vCard is expressed as a geographical location on the
     city, region, code
     country
 
-This recomposed address is then attributed to the location using `mlr9:DES1700`.
+This recomposed address is then attributed to the location using `mlr9:DES0700`.
 
     :::xml
     <lifeCycle>
@@ -1876,17 +1816,15 @@ Becomes
 
     :::N3
     [] a mlr1:RC0002;
-        mlr5:DES1700 [ a mlr5:RC0003;
-            mlr5:DES1800 [ a mlr9:RC0001;
-                mlr9:DES1100 [ a mlr9:RC0002;
-                    mlr9:DES1300 [ a mlr9:RC0003;
-                        mlr9:DES1700 """455, rue du Parvis
+        mlr2:DES1600 [ a mlr9:RC0001;
+            mlr9:DES0900 [ a mlr9:RC0002;
+                mlr9:DES0700 """455, rue du Parvis
     Québec, Québec, G1K 9H6
-    Canada""" ] ] ] ] .
+    Canada""" ] ] .
 
 #### `GEO`
 
-vCard Geo information is also attached to the geographical location in the case of an organization. We have to decompose in latitude (`mlr9:DES1500`) and longitude (`mlr9:DES1400`).
+vCard Geo information is also attached to the geographical location in the case of an organization. We have to decompose in latitude (`mlr9:DES1300`) and longitude (`mlr9:DES1400`).
 
     :::xml
     <lifeCycle>
@@ -1909,11 +1847,10 @@ Becomes
 
     :::N3
     [] a mlr1:RC0002;
-        mlr5:DES1700 [ a mlr5:RC0003;
-            mlr5:DES1800 [ a mlr9:RC0002;
-                mlr9:DES1300 [ a mlr9:RC0003;
-                    mlr9:DES1400 "-122.082932"^^<http://www.w3.org/2001/XMLSchema#float>;
-                    mlr9:DES1500 "37.386013"^^<http://www.w3.org/2001/XMLSchema#float> ] ] ] .
+        mlr2:DES1600 [ a mlr9:RC0002;
+            mlr9:DES1100 [ a mlr9:RC0003;
+                mlr9:DES1200 "-122.082932"^^<http://www.w3.org/2001/XMLSchema#float>;
+                mlr9:DES1300 "37.386013"^^<http://www.w3.org/2001/XMLSchema#float> ] ].
 
 ##### `GEO` for persons
 
@@ -1945,20 +1882,18 @@ Becomes
 
     :::N3
     [] a mlr1:RC0002;
-        mlr5:DES1700 [ a mlr5:RC0003;
-            mlr5:DES1800 [ a mlr9:RC0001;
-                mlr9:DES1100 [ a mlr9:RC0002 ] ] ].
+        mlr2:DES1600 [ a mlr9:RC0001;
+            mlr9:DES0900 [ a mlr9:RC0002 ] ].
 
 But not
 
     :::N3 forbidden
     [] a mlr1:RC0002;
-        mlr5:DES1700 [ a mlr5:RC0003;
-            mlr5:DES1800 [ a mlr9:RC0001;
-                mlr9:DES1100 [ a mlr9:RC0002;
-                    mlr9:DES1300 [ a mlr9:RC0003;
-                        mlr9:DES1400 "-122.082932"^^<http://www.w3.org/2001/XMLSchema#float>;
-                        mlr9:DES1500 "37.386013"^^<http://www.w3.org/2001/XMLSchema#float> ] ] ] ] .
+        mlr2:DES1600 [ a mlr9:RC0001;
+            mlr9:DES0900 [ a mlr9:RC0002;
+                mlr9:DES1100 [ a mlr9:RC0003;
+                    mlr9:DES1200 "-122.082932"^^<http://www.w3.org/2001/XMLSchema#float>;
+                    mlr9:DES1300 "37.386013"^^<http://www.w3.org/2001/XMLSchema#float> ] ] ].
 
 
 ### Contribution Date
@@ -2034,57 +1969,7 @@ Becomes
 
 #### Contribution dates
 
-Dates are transferred within the `mlr5:DES0700` contribution entities, as long as they can be parsed.
-
-    :::xml
-    <lifeCycle>
-        <contribute>
-            <role>
-                <source>LOMv1.0</source>
-                <value>publisher</value>
-            </role>
-            <date>
-                <dateTime>2012-01-01T00:00</dateTime>
-            </date>
-        </contribute>
-    </lifeCycle>
-
-Becomes
-
-    :::N3
-    []  a mlr1:RC0002;
-        mlr5:DES1700 [ a mlr5:RC0003;
-            mlr5:DES0700 "2012-01-01T00:00"^^<http://www.w3.org/2001/XMLSchema#dateTime> ] .
-
-##### #####
-
-Unparsable dates are simply ignored.
-
-    :::xml
-    <lifeCycle>
-        <contribute>
-            <role>
-                <source>LOMv1.0</source>
-                <value>publisher</value>
-            </role>
-            <description>
-                <string language="fra-CA">mi-XVIème siècle</string>
-            </description>
-        </contribute>
-    </lifeCycle>
-
-Becomes
-
-    :::N3
-    []  a mlr1:RC0002;
-        mlr5:DES1700 [ a mlr5:RC0003 ].
-
-without
-
-    :::N3 forbidden
-    []  a mlr1:RC0002;
-        mlr5:DES1700 [ a mlr5:RC0003;
-            mlr5:DES0700 "mi-XVIème siècle"@fra-CA ] .
+Contribution and publication dates have no equivalent in MLR.
 
 ## Metametadata
 
@@ -2114,8 +1999,8 @@ Becomes
 
     :::N3
     <urn:uuid:10000000-0000-0000-0000-000000000000> a mlr1:RC0002;
-    mlr8:DES0300 [ a mlr8:RC0001;
-        mlr8:DES1400 "http://www.example.com/lom/1234" ] .
+    mlr8:DES0100 [ a mlr8:RC0001;
+        mlr8:DES0300 "http://www.example.com/lom/1234" ] .
 
 
 #### Other global catalogs
@@ -2134,8 +2019,8 @@ Becomes
 
     :::N3
     <urn:uuid:10000000-0000-0000-0000-000000000000> a mlr1:RC0002;
-    mlr8:DES0300 [ a mlr8:RC0001;
-        mlr8:DES1400 "urn:ISBN:0-201-61633-5" ] .
+    mlr8:DES0100 [ a mlr8:RC0001;
+        mlr8:DES0300 "urn:ISBN:0-201-61633-5" ] .
 
 
 #### Local catalog
@@ -2154,8 +2039,8 @@ Becomes
 
     :::N3
     <urn:uuid:10000000-0000-0000-0000-000000000000> a mlr1:RC0002;
-    mlr8:DES0300 [ a mlr8:RC0001;
-        mlr8:DES1400 "MyDatabase|123123" ] .
+    mlr8:DES0100 [ a mlr8:RC0001;
+        mlr8:DES0300 "MyDatabase|123123" ] .
 
 
 #### No identifier
@@ -2174,21 +2059,7 @@ Becomes
 But not
 
     :::N3 forbidden
-    <urn:uuid:10000000-0000-0000-0000-000000000000> mlr8:DES1400 "urn:uuid:10000000-0000-0000-0000-000000000000"  .
-
-### Converter URL
-
-The converter software has a URL that identifies it, and identifies the record as a converted record. It is also used to construct the MLR record's identity. This URL should include versioning information. Question: should we also integrate conversion settings information?
-
-    :::xml
-    <metaMetadata>
-    </metaMetadata>
-
-Becomes
-
-    :::N3
-    <urn:uuid:10000000-0000-0000-0000-000000000000> a mlr8:RC0001 ;
-        mlr8:DES1600 <http://www.gtn-quebec/ns/lom2mlr/version/0.1>  .
+    <urn:uuid:10000000-0000-0000-0000-000000000000> mlr8:DES0300 "urn:uuid:10000000-0000-0000-0000-000000000000"  .
 
 ### MLR Record identity
 
@@ -2198,12 +2069,12 @@ The identity of the conversion software could also be integrated in the identity
 
 #### Constructed LOM identity and converter URL 
 
-If we have determined a LOM identity, we can create an identity for the MLR record by combining it with the converter URL, as follows: 
+If we have decided to use a mutable MLR record and determined a LOM identity, we can create an identity for the MLR record by combining it with the converter URL, as follows: 
 
 1. First, create a namespace UUID from the converter URL: `UUID5(NAMESPACE_URL, converter_URL)`, which in our case would be `CONVERTER_NAMESPACE_UUID=db3821e4-d6ed-5339-a1a1-1a760b0e1cc4`
 2. Second, use this as a namespace for the LOM identity, taken as a string. `UUID5(CONVERTER_NAMESPACE_UUID, LOM_IDENTITY)`. (In our example, 1d9c8ec0-32e4-52be-bcba-ad32ba11a422)
 
-This identity is also the MLR record identifier. This identity also allows to define the bidirectional relationship between the resource and its MLR record, defined in the `mlr8:DES0200-mlr8:DES0300` pair.
+This identity is also the MLR record identifier. This identity also allows to define the relationship between the resource and its MLR record, defined in the `mlr8:DES0100`.
 
     :::xml
     <general>
@@ -2221,17 +2092,31 @@ This identity is also the MLR record identifier. This identity also allows to de
 
 Becomes
 
-    :::N3
+    :::N3 --mutable_record
     <http://www.example.com/entry/4321> a mlr1:RC0002;
-        mlr8:DES0300 <urn:uuid:1d9c8ec0-32e4-52be-bcba-ad32ba11a422> .
-    <urn:uuid:1d9c8ec0-32e4-52be-bcba-ad32ba11a422> a mlr8:RC0001;
-        mlr8:DES0100 "urn:uuid:1d9c8ec0-32e4-52be-bcba-ad32ba11a422" ;
-        mlr8:DES0200 <http://www.example.com/entry/4321> ;
-        mlr8:DES1400 "http://www.example.com/lom/1234" .
+        mlr8:DES0600 <urn:uuid:1d9c8ec0-32e4-52be-bcba-ad32ba11a422> .
+    <urn:uuid:1d9c8ec0-32e4-52be-bcba-ad32ba11a422> a mlr8:RC0002;
+        mlr8:DES0700 "urn:uuid:1d9c8ec0-32e4-52be-bcba-ad32ba11a422" ;
+        mlr8:DES0300 "http://www.example.com/lom/1234" .
 
 #### Absence of LOM identity
 
-In the absence of LOM identity, the simplest solution is to create a UUID-1.
+In the absence of LOM identity, the simplest solution for a mutable record is to create a UUID-1.
+
+    :::xml
+    <metaMetadata>
+    </metaMetadata>
+
+Becomes
+
+    :::N3  --mutable_record
+    <urn:uuid:10000000-0000-0000-0000-000000000000> a mlr1:RC0002;
+        mlr8:DES0600 <urn:uuid:10000000-0000-0000-0000-000000000001> .
+    <urn:uuid:10000000-0000-0000-0000-000000000001> a mlr8:RC0002;
+        mlr8:DES0700 "urn:uuid:10000000-0000-0000-0000-000000000001" .
+
+
+#### Non-mutable records do not have an identity
 
     :::xml
     <metaMetadata>
@@ -2241,9 +2126,16 @@ Becomes
 
     :::N3
     <urn:uuid:10000000-0000-0000-0000-000000000000> a mlr1:RC0002;
-        mlr8:DES0300 <urn:uuid:10000000-0000-0000-0000-000000000001> .
+        mlr8:DES0100 <urn:uuid:10000000-0000-0000-0000-000000000001> .
+    <urn:uuid:10000000-0000-0000-0000-000000000001> a mlr8:RC0001.
+
+But
+
+    :::N3 forbidden
+    <urn:uuid:10000000-0000-0000-0000-000000000000> a mlr1:RC0002;
+        mlr8:DES0100 <urn:uuid:10000000-0000-0000-0000-000000000001> .
     <urn:uuid:10000000-0000-0000-0000-000000000001> a mlr8:RC0001;
-        mlr8:DES0100 "urn:uuid:10000000-0000-0000-0000-000000000001" .
+        mlr8:DES0700 "urn:uuid:10000000-0000-0000-0000-000000000001" .
 
 
 ### Record as a graph
@@ -2269,13 +2161,11 @@ Becomes
             xmlns:mlr8="http://standards.iso.org/iso-iec/19788/-8/ed-1/en/">
         <mlr1:RC0002 rdf:about="urn:uuid:10000000-0000-0000-0000-000000000000"
                 cos:graph="urn:uuid:1d9c8ec0-32e4-52be-bcba-ad32ba11a422">
-            <mlr8:DES0300>
+            <mlr8:DES0100>
                 <mlr8:RC0001 rdf:about="urn:uuid:1d9c8ec0-32e4-52be-bcba-ad32ba11a422">
-                    <mlr8:DES0100>urn:uuid:1d9c8ec0-32e4-52be-bcba-ad32ba11a422</mlr8:DES0100>
-                    <mlr8:DES0200 rdf:resource="urn:uuid:10000000-0000-0000-0000-000000000000"/>
-                    <mlr8:DES1400>http://www.example.com/lom/1234</mlr8:DES1400>
+                    <mlr8:DES0300>http://www.example.com/lom/1234</mlr8:DES0300>
                 </mlr8:RC0001>
-            </mlr8:DES0300>
+            </mlr8:DES0100>
         </mlr1:RC0002>
     </rdf:RDF>
 
@@ -2313,11 +2203,9 @@ Becomes
 
     :::N3
     <urn:uuid:10000000-0000-0000-0000-000000000000> a mlr8:RC0001;
-        mlr8:DES0700 <urn:uuid:10000000-0000-0000-0000-000000000001> .
-    <urn:uuid:10000000-0000-0000-0000-000000000001> a mlr8:RC0002;
-        mlr8:DES1200 "T001" ;
-        mlr8:DES1000 <http://maparent.ca/> ;
-        mlr8:DES1300 "1999-12-01"^^<http://www.w3.org/2001/XMLSchema#date> .
+        mlr8:DES1100 <urn:uuid:10000000-0000-0000-0000-000000000001> .
+    <urn:uuid:10000000-0000-0000-0000-000000000001> a mlr8:RC0003;
+        mlr8:DES1200 "creator" .
 
 ##### Validator
 
@@ -2335,13 +2223,13 @@ Becomes
 
     :::N3
     <urn:uuid:10000000-0000-0000-0000-000000000000> a mlr8:RC0001;
-        mlr8:DES0700 <urn:uuid:10000000-0000-0000-0000-000000000001> .
-    <urn:uuid:10000000-0000-0000-0000-000000000001> a mlr8:RC0002;
-        mlr8:DES1200 "T002" .
+        mlr8:DES1100 <urn:uuid:10000000-0000-0000-0000-000000000001> .
+    <urn:uuid:10000000-0000-0000-0000-000000000001> a mlr8:RC0003;
+        mlr8:DES1200 "validator" .
 
 ### Metadata Schema
 
-The LOM `metadataSchema`, is simply carried over to `mlr8:DES0600`.
+The LOM `metadataSchema`, is simply carried over to `mlr8:DES1000`.
 Note: It would be possible, and maybe desirable, to identify some common metadataschemas as resources, with an appropriate URL. This may be explored in the future.
 
     :::xml
@@ -2353,11 +2241,11 @@ Becomes
 
     :::N3
     <urn:uuid:10000000-0000-0000-0000-000000000000> a mlr8:RC0001;
-        mlr8:DES0600 "LOMv1.0" .
+        mlr8:DES0400 "LOMv1.0" .
 
 ### Language
 
-Language is treated as before, except that we do not have the distinction between valid and invalid language tags, and either will translated as `mlr8:DES0400`.
+Language is treated as before, except that we do not have the distinction between valid and invalid language tags, and either will translated as `mlr8:DES0200`.
 
 #### ISO-639-3
 
@@ -2370,7 +2258,7 @@ Becomes
 
     :::N3
     <urn:uuid:10000000-0000-0000-0000-000000000000> a mlr8:RC0001;
-        mlr8:DES0400 "fra-CA" .
+        mlr8:DES0200 "fra-CA" .
 
 #### ISO-639-2
 
@@ -2385,7 +2273,7 @@ Becomes
 
     :::N3
     <urn:uuid:10000000-0000-0000-0000-000000000000> a mlr8:RC0001;
-        mlr8:DES0400 "fra-CA" .
+        mlr8:DES0200 "fra-CA" .
 
 
 #### other language values
@@ -2399,7 +2287,7 @@ Becomes
 
     :::N3
     <urn:uuid:10000000-0000-0000-0000-000000000000> a mlr8:RC0001;
-        mlr8:DES0400 "français" .
+        mlr8:DES0200 "français" .
 
 ## Technical
 
@@ -2420,23 +2308,6 @@ Becomes
     <urn:uuid:10000000-0000-0000-0000-000000000000> a mlr1:RC0002;
         mlr2:DES0900 "interactive" .
 
-#### Mime types
-
-If the format is a MIME type (recognized by a regexp), it will also be identified as `mlr3:DES0300` (provided mlr3 tags are enabled.)
-
-    :::xml
-    <technical>
-        <format>text/html</format>
-    </technical>
-
-Becomes
-
-    :::n3
-    <urn:uuid:10000000-0000-0000-0000-000000000000> a mlr1:RC0002;
-        mlr2:DES0900 "text/html" ;
-        mlr3:DES0300 "text/html".
-
-
 #### non-digital
 
 Similarly for format marked as "non-digital".
@@ -2450,8 +2321,7 @@ Becomes
 
     :::n3
     <urn:uuid:10000000-0000-0000-0000-000000000000> a mlr1:RC0002;
-        mlr2:DES0900 "non-digital" ;
-        mlr3:DES0300 "non-digital".
+        mlr2:DES0900 "non-digital".
 
 
 ### Size
@@ -2996,7 +2866,7 @@ Without
 
 ### Learning resource type
 
-The learning resource type is integrated as-is in `mlr2:DES0800`. Moreover, if MLR3 is enabled an the learning resource type is known, and corresponds to a MLR resource type from vocabulary `ISO_IEC_19788-3:2011::VA.2 `, it will be translated in `mlr3:DES0700`.
+The learning resource type is integrated as-is in `mlr2:DES0800`. Moreover, if MLR3 is enabled an the learning resource type is known, and corresponds to a MLR resource type from vocabulary `ISO_IEC_19788-3:2011::VA.2 `, we will use this vocabulary.
 
 However, there is extremely limited overlap between known LOM resource types and MLR resource types. We have identified the following:
 
@@ -3026,7 +2896,7 @@ We obtain
     :::n3
     <urn:uuid:10000000-0000-0000-0000-000000000000> a mlr1:RC0002;
         mlr2:DES0800 "table";
-        mlr3:DES0700 "T002".
+        mlr2:DES0800 "T002".
 
 ### Difficulty, semantic density, interactivity level.
 
@@ -3230,10 +3100,10 @@ Descriptions are treated as a form of annotation.
 Becomes
 
     :::n3
-    <urn:uuid:10000000-0000-0000-0000-000000000000> a mlr1:RC0002;
-        mlr5:DES1300 <urn:uuid:10000000-0000-0000-0000-000000000001>.
-    <urn:uuid:10000000-0000-0000-0000-000000000001> a mlr5:RC0001;
-        mlr5:DES0200 "Use this resource for group activities."@eng.
+    <urn:uuid:10000000-0000-0000-0000-000000000000> a mlr1:RC0002.
+    <urn:uuid:10000000-0000-0000-0000-000000000001> a oa:Annotation;
+        oa:hasBody "Use this resource for group activities."@eng;
+        oa:hasTarget <urn:uuid:10000000-0000-0000-0000-000000000000>.
 
 
 ## Rights
@@ -3256,6 +3126,23 @@ Becomes
     :::n3
     <urn:uuid:10000000-0000-0000-0000-000000000000> a mlr1:RC0002;
         mlr2:DES1500 "Domaine public."@fra .
+
+If it is a IRI, we can use `mlr2:DES2300`.
+
+    :::xml
+    <rights>
+        <description>
+            <string language="zxx">http://creativecommons.org/licenses/by-nc/3.0/us/legalcode</string>
+        </description>
+    </rights>
+
+Becomes
+
+    :::n3
+    <urn:uuid:10000000-0000-0000-0000-000000000000> a mlr1:RC0002;
+        mlr2:DES2300 <http://creativecommons.org/licenses/by-nc/3.0/us/legalcode> .
+    <http://creativecommons.org/licenses/by-nc/3.0/us/legalcode> a mlr2:RC0002 .
+
 
 ### Costs
 
@@ -3320,7 +3207,7 @@ Becomes
 
 ### Source
 
-The LOMv1.0 relationship `isbasedon` translates to source, that is `mlr2:DES1100` and optionally `mlr3:DES0600`. Identifiers are treated as usual (with a uuid-string for local catalogs, etc.)
+The LOMv1.0 relationship `isbasedon` translates to source, that is `mlr2:DES2100` in case when the identifier is also an IRI, or can be translated to one easily.
 
     :::xml
     <relation>
@@ -3340,12 +3227,36 @@ Becomes
 
     :::n3
     <urn:uuid:10000000-0000-0000-0000-000000000000> a mlr1:RC0002;
-        mlr2:DES1100 "http://www.example.com/resources/1234" ;
-        mlr3:DES0600 "http://www.example.com/resources/1234".
+        mlr2:DES2100 <http://www.example.com/resources/1234>.
+
+Local catalogs are the exception, and we use `mlr2:DES1100`, and optionally `mlr3:DES0600`.
+
+    :::xml
+    <relation>
+        <kind>
+            <source>LOMv1.0</source>
+            <value>isbasedon</value>
+        </kind>
+        <resource>
+            <identifier>
+                <catalog>a_local_catalog</catalog>
+                <entry>1234</entry>
+            </identifier>
+        </resource>
+    </relation>
+
+Becomes
+
+    :::n3
+    <urn:uuid:10000000-0000-0000-0000-000000000000> a mlr1:RC0002;
+        mlr2:DES1100 "a_local_catalog|1234" ;
+        mlr3:DES0600 "a_local_catalog|1234".
+
+Note: Should we then also use a UUID with mlr:DES2100? Optionally?
 
 ### Other relations
 
-Any other relation are expressed with the `mlr2:DES1300` tag. The nature of the relation is lost.
+Any other relation are expressed with the `mlr2:DES2200` tag (for URIs) the (for local catalogs). The nature of the relation is lost.
 
     :::xml
     <relation>
@@ -3365,7 +3276,30 @@ Becomes
 
     :::n3
     <urn:uuid:10000000-0000-0000-0000-000000000000> a mlr1:RC0002;
-        mlr2:DES1300 "http://www.example.com/resources/1234" .
+        mlr2:DES2200 <http://www.example.com/resources/1234> .
+
+Similarly for local catalogs, we use the `mlr2:DES1300` tag.
+
+    :::xml
+    <relation>
+        <kind>
+            <source>LOMv1.0</source>
+            <value>requires</value>
+        </kind>
+        <resource>
+            <identifier>
+                <catalog>a_local_catalog</catalog>
+                <entry>1234</entry>
+            </identifier>
+        </resource>
+    </relation>
+
+Becomes
+
+    :::n3
+    <urn:uuid:10000000-0000-0000-0000-000000000000> a mlr1:RC0002;
+        mlr2:DES1300 "a_local_catalog|1234" .
+
 
 ## Annotation
 
@@ -3374,15 +3308,13 @@ LOM annotations are treated as educational annotations of an unknown type. Treat
 
     :::xml
     <annotation>
-        <entity>
-            <vcard>BEGIN:VCARD
+        <entity>BEGIN:VCARD
     VERSION:3.0
     N:Parent;Marc-Antoine.
     FN:Marc-Antoine Parent
     URL:http://maparent.ca/
     END:VCARD
-    </vcard>
-        </entity>
+    </entity>
         <date>
             <dateTime>2004-04-01</dateTime>
         </date>
@@ -3394,12 +3326,13 @@ LOM annotations are treated as educational annotations of an unknown type. Treat
 Becomes
 
     :::n3
-    <urn:uuid:10000000-0000-0000-0000-000000000000> a mlr1:RC0002;
-        mlr5:DES1300 <urn:uuid:10000000-0000-0000-0000-000000000001>.
-    <urn:uuid:10000000-0000-0000-0000-000000000001> a mlr5:RC0001;
-        mlr5:DES1400 <http://maparent.ca/> ;
-        mlr5:DES0200 "Cette ressource exige beaucoup d'aide de l'enseignant."@fra ;
-        mlr5:DES0100 "2004-04-01"^^<http://www.w3.org/2001/XMLSchema#date> .
+    <urn:uuid:10000000-0000-0000-0000-000000000000> a mlr1:RC0002.
+    <urn:uuid:10000000-0000-0000-0000-000000000001> a oa:Annotation;
+        oa:hasTarget <urn:uuid:10000000-0000-0000-0000-000000000000>;
+        oa:annotatedBy <http://maparent.ca/> ;
+        oa:hasBody "Cette ressource exige beaucoup d'aide de l'enseignant."@fra ;
+        oa:annotatedAt "2004-04-01"^^<http://www.w3.org/2001/XMLSchema#date> .
+    <http://maparent.ca/> a mlr9:RC0001.
 
 ## Classification
 
@@ -3415,13 +3348,13 @@ LOMv1.0 distinguishes many purposes of resource classification.
 * security level
 * competency
 
-Of those, we translate only discipline and educational level into `mlr2:DES0200` and `mlr5:DES1000` respectively.
+Of those, we translate only discipline and educational level into `mlr2:DES0300` and `mlr5:DES1000` respectively.
 
 ### Discipline
 
 #### Description
 
-The discipline description can be translated directly as `mlr2:DES0200`.
+The discipline description can be translated directly as `mlr2:DES0300`.
 
     :::xml
     <classification>
@@ -3465,7 +3398,7 @@ Becomes
 
 #### Taxon path
 
-If we have neither description nor keywords, we can use the last (most precise) item of a taxon path. Sometimes, it is necessary to give context rather than the most precise taxon, but that is unfortunately difficult to determine.
+If we have neither description nor keywords, we can use the last (most precise) item of a taxon path for the `mlr2:DES0300` literal. Sometimes, it is necessary to give context rather than the most precise taxon, but that is unfortunately difficult to determine.
 
     :::xml
     <classification>
@@ -3478,20 +3411,20 @@ If we have neither description nor keywords, we can use the last (most precise) 
                 <string language="eng">DDC 22nd ed.</string>
             </source>
             <taxon>
+                <id>500</id>
                 <entry>
-                    <id>500</id>
                     <string language="eng">Natural Sciences and Mathemetics</string>
                 </entry>
             </taxon>
             <taxon>
+                <id>510</id>
                 <entry>
-                    <id>510</id>
                     <string language="eng">Mathematics</string>
                 </entry>
             </taxon>
             <taxon>
+            <id>512</id>
                 <entry>
-                    <id>512</id>
                     <string language="eng">Algebra</string>
                 </entry>
             </taxon>
@@ -3504,6 +3437,77 @@ Becomes
     :::n3
     <urn:uuid:10000000-0000-0000-0000-000000000000> a mlr1:RC0002;
         mlr2:DES0300 "Algebra"@eng .
+
+#### Taxon path with URI source
+
+If the source is an absolute IRI reference, it can be presumed to refer to a well defined vocabulary (using SKOS or VDEX, for example), and the combination of source and final taxon identifier can be presumed to be a URI for a concept in a taxonomy, which can be identified using `mlr2:DES1700`. The same can be done if the taxon identifier is itself a URI. This is a fragile heuristics, as the [RFC 3987](http://www.ietf.org/rfc/rfc3987.txt) syntax for absolute IRI references is quite permissive. Still, it will avoid some of the most obvious mistakes.
+
+    :::xml
+    <classification>
+        <purpose>
+            <source>LOMv1.0</source>
+            <value>discipline</value>
+        </purpose>
+        <taxonPath>
+            <source>
+                <string language="zxx">http://dewey.info/class/</string>
+            </source>
+            <taxon>
+                <id>500</id>
+                <entry>
+                    <string language="eng">Natural Sciences and Mathemetics</string>
+                </entry>
+            </taxon>
+            <taxon>
+                <id>510</id>
+                <entry>
+                    <string language="eng">Mathematics</string>
+                </entry>
+            </taxon>
+            <taxon>
+                <id>512</id>
+                <entry>
+                    <string language="eng">Algebra</string>
+                </entry>
+            </taxon>
+        </taxonPath>
+    </classification>
+
+Becomes
+
+    :::n3
+    <urn:uuid:10000000-0000-0000-0000-000000000000> a mlr1:RC0002;
+        mlr2:DES0300 "Algebra"@eng ;
+        mlr2:DES1700 <http://dewey.info/class/512>.
+
+
+Similarly if the taxon identifier is an absolute IRI reference.
+
+    :::xml
+    <classification>
+        <purpose>
+            <source>LOMv1.0</source>
+            <value>discipline</value>
+        </purpose>
+        <taxonPath>
+            <source>
+                <string language="eng">a vocabulary</string>
+            </source>
+            <taxon>
+                <id>http://example.com/vocabulary.vdex#abcd</id>
+                <entry>
+                    <string language="eng">ABCD</string>
+                </entry>
+            </taxon>
+        </taxonPath>
+    </classification>
+
+Becomes
+
+    :::n3
+    <urn:uuid:10000000-0000-0000-0000-000000000000> a mlr1:RC0002;
+        mlr2:DES0300 "ABCD"@eng ;
+        mlr2:DES1700 <http://example.com/vocabulary.vdex#abcd>.
 
 
 ### Educational level

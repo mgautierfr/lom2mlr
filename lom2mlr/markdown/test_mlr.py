@@ -1,5 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+"""A :markdown-ext:`treeprocessors` that treats LOM fragments followed by MLR fragments as doctests."""
+
+from __future__ import print_function
 
 from cgi import escape
 import re
@@ -25,6 +28,7 @@ def stringify_error_element(n):
 
 class TestTreeprocessor(Treeprocessor):
     """Treats a series of code fragments in a markdown document as a doctest.
+
     Moreover, the results of the doctest are embedded in the resulting document.
     XML fragments are assumed to be LOM fragments,
     and are transformed into MLR by a Converter.
@@ -69,7 +73,7 @@ class TestTreeprocessor(Treeprocessor):
                 target = root
                 graphs = []
                 error = False
-                print " " * int(element.tag[1]) + element.text
+                print(" " * int(element.tag[1]) + element.text)
             elif element.tag == 'pre':
                 sub = list(element)
                 assert len(sub) == 1
@@ -108,7 +112,7 @@ class TestTreeprocessor(Treeprocessor):
                         p2.append(tr)
                         tr.text = ":::Python Traceback\n" + traceback.format_exc()
                         element = p2
-                        print '*', e
+                        print('*', e)
                         error = True
                 elif format.lower() == 'n3':
                     try:
@@ -132,7 +136,7 @@ class TestTreeprocessor(Treeprocessor):
                                     p.text = u"Il manque &lt; %s %s %s &gt;." % error
                                 elif  err_type == GraphTester.UNEXPECTED:
                                     p.text = u"&lt; %s %s %s &lt; est présent et ne devrait pas l'être." % error
-                                print '*', p.text
+                                print('*', p.text)
                                 diverrors.append(p)
                             element = diverrors
                     except Exception as e:
@@ -142,7 +146,7 @@ class TestTreeprocessor(Treeprocessor):
                         p2.append(tr)
                         tr.text = ":::Python Traceback\n" + traceback.format_exc()
                         element = p2
-                        print '*', e
+                        print('*', e)
                         error = True
             target.append(element)
         if graphs and not error:

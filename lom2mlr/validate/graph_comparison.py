@@ -1,6 +1,8 @@
 #!/usr/env python
 # -*- coding: utf-8 -*-
 
+__doc__ = """Compare RDF graphs and find missing triples. Allows wildcard nodes."""
+
 from collections import defaultdict
 from itertools import chain
 import re
@@ -14,25 +16,28 @@ from lom2mlr import Converter
 LOM_TEMPLATE = u'''<?xml version="1.0"?>
 <lom xmlns="http://ltsc.ieee.org/xsd/LOM">%s</lom>
 '''
+"""LOM fragments are embedded in this full LOM template"""
 
-N3_PREFIXES = u'''
-@prefix mlr1: <http://standards.iso.org/iso-iec/19788/-1/ed-1/en/> .
-@prefix mlr2: <http://standards.iso.org/iso-iec/19788/-2/ed-1/en/> .
-@prefix mlr3: <http://standards.iso.org/iso-iec/19788/-3/ed-1/en/> .
-@prefix mlr4: <http://standards.iso.org/iso-iec/19788/-4/ed-1/en/> .
-@prefix mlr5: <http://standards.iso.org/iso-iec/19788/-5/ed-1/en/> .
-@prefix mlr8: <http://standards.iso.org/iso-iec/19788/-8/ed-1/en/> .
-@prefix mlr9: <http://standards.iso.org/iso-iec/19788/-9/ed-1/en/> .
-'''
 
 SECTIONS = (1, 2, 3, 4, 5, 8, 9)
+"""List of sections of the MLR standard that have a namespace"""
+
 LANGUAGES = ('eng', 'fra', 'rus')
+"""List of languages used in translation"""
+
 PATTERN1 = "@prefix mlr%d: <http://standards.iso.org/iso-iec/19788/-%d/ed-1/en/> ."
 PATTERN2 = "@prefix mlr%d_%s: <http://www.gtn-quebec.org/ns/translation/iso-iec/19788/-%d/ed-1/%s/> ."
+
 N3_PREFIXES = "\n".join([PATTERN1 % (s, s) for s in SECTIONS]) + "\n" + \
               "\n".join(chain(*[[PATTERN2 % (s, l, s, l)
-                                for s in SECTIONS] for l in LANGUAGES]))
+                                for s in SECTIONS] for l in LANGUAGES])) + \
+              "\n@prefix oa: <http://www.w3.org/ns/oa#> ."
+"""Prefixes for parts of the MLR standard, and their translations"""
+
+# Regular expression for UUID wildcards
 BLANK_UUID_RE = re.compile(u'^urn:uuid:([0-5])0000000-0000-0000-0000-([0-9]{12})$')
+
+# Regular expression for UUIDs
 UUID_RE = re.compile(u'^urn:uuid:[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$')
 
 
@@ -62,12 +67,14 @@ def valid_uuid_correspondance(blank_node, node):
 class GraphCorrespondence(object):
     """Identifies corresponding nodes between a source and destination RDF graph.
     Nodes correspond if:
+
     1. They are identical resources or literals
     2. The dest node is a resource and the source node is a blank
-        (or "blank-like") nodes involved in identical relations to corresponding nodes.
+       (or "blank-like") nodes involved in identical relations to corresponding nodes.
+    
     This notion of correspondance is built iteratively.
     blank-like nodes are UUID nodes where the first digit is the UUID type,
-        the next 19 digits are zero, and the last 12 digits are unique.
+    the next 19 digits are zero, and the last 12 digits are unique.
     """
     def __init__(self, source, dest):
         self.source = source
@@ -132,7 +139,7 @@ class GraphCorrespondence(object):
         for n in blanks_s:
             unknown, objects = self.identify_one_by_objects(n)
             if len(objects) == 1:
-                self.blank_map[n] = objects.keys()[0]
+                self.blank_map[n] = next(objects.iterkeys())
         missing = set()
         while len(self.blank_map) + len(missing) < len(blanks_s):
             remainder = blanks_s - set(self.blank_map.keys()) - missing
@@ -166,11 +173,12 @@ class GraphCorrespondence(object):
 class GraphTester(object):
     """Compares MLR graphs obtained from converting LOM to expected graphs.
     The graph tester is stateful.
+
     1. Receives a LOM fragment and stores it.
     2. Receives a required N3 MLR graph and LOM conversion parameters
-        2a. Converts the LOM fragment to a converted graph (with parameters.)
-        2b. Checks that all triples in the N3 graph are found in the converted
-            graph. Stores the required graph.
+        A. Converts the LOM fragment to a converted graph (with parameters.)
+        B. Checks that all triples in the N3 graph are found in the converted
+           graph. Stores the required graph.
     3. Receives a forbidden N3 MLR graph:
         Checks that all triples in the forbidden graph are either present in
         the required graph or absent from the converted graph.
@@ -243,10 +251,12 @@ class GraphTester(object):
         nsm = obtained_graph.namespace_manager
         comparator_fo = GraphCorrespondence(forbidden_graph, obtained_graph)
         comparator_fo.identify()
-        map_oe = {o: e for (e, o) in
-                  self.last_comparator.blank_map.items()}
-        map_fe = {f: map_oe.get(o, None) for f, o in
-                  comparator_fo.blank_map.items()}
+        map_oe = dict(
+            (o, e) for (e, o) in
+            self.last_comparator.blank_map.iteritems())
+        map_fe = dict(
+            (f, map_oe.get(o, None)) for f, o in
+            comparator_fo.blank_map.iteritems())
         triples = forbidden_graph.triples((None, None, None))
         for triple in triples:
             if list(obtained_graph.triples(comparator_fo.translate_triple(triple))) \

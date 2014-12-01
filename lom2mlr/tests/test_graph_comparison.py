@@ -1,8 +1,12 @@
+"""Unit tests for algorithms in :py:mod:`lom2mlr.validate.graph_comparison`"""
+
+from __future__ import print_function
+
 import unittest
 
 from lom2mlr.validate.graph_comparison import (
     GraphTester, N3_PREFIXES, GraphCorrespondence)
-from rdflib import Graph, BNode, Namespace, RDF
+from rdflib import Graph, BNode, Namespace, RDF, Literal
 
 MLR1_NS = "http://standards.iso.org/iso-iec/19788/-1/ed-1/en/"
 MLR1 = Namespace(MLR1_NS)
@@ -41,7 +45,8 @@ class testGraphComparison(unittest.TestCase):
             '''))
         assert len(errors) == 1
         error = errors[0]
-        assert error[2] == u"Commentaire"
+        print(error)
+        assert error[2] == Literal(u"Commentaire")
 
     def test_find_missing_on_uuid(self):
         errors = self.graphtester.find_missing(
@@ -68,7 +73,7 @@ class testGraphComparison(unittest.TestCase):
         errors = self.graphtester.find_forbidden(forbidden, obtained)
         assert len(errors) == 1
         error = errors[0]
-        assert error[2] == u"Titre"
+        assert error[2] == Literal(u"Titre")
 
     def test_identify_blanks(self):
         g1 = Graph()

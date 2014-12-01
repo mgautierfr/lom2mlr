@@ -1,12 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+"""A :markdown-ext:`treeprocessors` that adds translated versions of N3 MLR fragments."""
 
 import re
 import os.path
 from collections import defaultdict
 
 #Hack pour importer sw sans le mettre dans pygments
-import sw
+from . import sw
 import pygments.plugin
 pygments.plugin.find_plugin_lexers = lambda: [sw.Notation3Lexer]
 
@@ -17,13 +18,13 @@ from markdown.util import etree
 
 # TODO: Extract this from correspondances_type.xml
 vocabularies_for_DES = {
-    "mlr3:DES0700": "ISO_IEC_19788-3-2011-VA.2",
+    "mlr2:DES0800": "ISO_IEC_19788-3-2011-VA.2",
     "mlr5:DES0800": "ISO_IEC_19788-5-2012-VA.1",
     "mlr5:DES0600": "ISO_IEC_19788-5-2012-VA.2",
     "mlr5:DES2100": "ISO_IEC_19788-5-2012-VA.3",
     "mlr5:DES2400": "ISO_IEC_19788-5-2012-VA.4",
     "mlr5:DES0300": "ISO_IEC_19788-5-2012-VA.5",
-    "mlr8:DES1200": "ISO_IEC_19788-8-2012-VA.2.2"
+    "mlr9:DES1900": "ISO_IEC_19788-9-2014-VA.2.1",
 }
 
 VDEX_PREFIX = '{http://www.imsglobal.org/xsd/imsvdex_v1p0}'
@@ -52,7 +53,7 @@ class TranslateMlrTreeprocessor(Treeprocessor):
         self.translations = translations
         vocs = {}
 
-        for voc in vocabularies_for_DES.values():
+        for voc in vocabularies_for_DES.itervalues():
             vocs[voc] = defaultdict(dict)
             tree = etree.parse(os.path.join(VDEX_DIR, '%s.vdex' % (voc)))
             for term in tree.findall(VDEX_PREFIX + 'term'):
@@ -76,7 +77,7 @@ class TranslateMlrTreeprocessor(Treeprocessor):
         return self.translations[lang].get(c, c) + t
 
     def run(self, root):
-        for div in root.iter("div"):
+        for div in root.getiterator("div"):
             if div.get("class") != 'example':
                 continue
             div_els = div.getchildren()
@@ -95,7 +96,7 @@ class TranslateMlrTreeprocessor(Treeprocessor):
                     t = code.text
                     if isinstance(t, str):
                         t = t.decode('utf-8')
-                    for lang in self.translations.keys():
+                    for lang in self.translations.iterkeys():
                         cl = classes.copy()
                         cl.add('lang_' + lang)
                         new_div = etree.Element('div', {'class': ' '.join(cl)})
