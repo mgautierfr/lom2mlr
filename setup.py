@@ -39,6 +39,7 @@ setup(name='lom2mlr',
           'console_scripts': [
               'lom2mlr = lom2mlr.transform:main',
               'extendvcard = extendvcard.extendvcard:main',
+              'extractvcard = extractvcard.extractvcard:main',
               'lom2mlr_markdown = lom2mlr.markdown:compile'
           ]
       },
