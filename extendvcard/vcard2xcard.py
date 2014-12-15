@@ -242,6 +242,7 @@ def fill_tree_from_vcard(node, vcard_):
             for k, v in e.params.iteritems():
                 param = params.makeelement(VCARD_NSB + k.lower(), nsmap=NSMAP)
                 params.append(param)
+                v = v.strip()
                 vobj_to_typed_param(v, param)
         v = e.transformToNative().value
         if isinstance(v, vcard.Address):
