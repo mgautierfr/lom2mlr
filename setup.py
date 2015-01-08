@@ -38,6 +38,7 @@ setup(name='lom2mlr',
       entry_points={
           'console_scripts': [
               'lom2mlr = lom2mlr.transform:main',
+              'extendvcard = extendvcard.extendvcard:main',
               'lom2mlr_markdown = lom2mlr.markdown:compile'
           ]
       },
